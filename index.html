@@ -33,30 +33,30 @@ window._fsDoc       = doc;
 window._fsSetDoc    = setDoc;
 window._fsIncrement = increment;
 window._fsAuth      = auth;
-window._fsRecaptchaVerifier    = RecaptchaVerifier;
-window._fsSignInWithPhone      = signInWithPhoneNumber;
-window._fsOnAuthStateChanged   = onAuthStateChanged;
+window._fsSignInWithPhone    = signInWithPhoneNumber;
+window._fsRecaptchaVerifier  = RecaptchaVerifier;
+window._fsOnAuthStateChanged = onAuthStateChanged;
 window._fsReady     = true;
 
-/* Initialize reCAPTCHA verifier immediately on load */
+/* Initialize reCAPTCHA ONCE on load — invisible, attached to send button */
 window.addEventListener('load', ()=>{
   try{
-    window._recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+    window._recaptchaVerifier = new RecaptchaVerifier(auth, 'otpSendBtn', {
       size: 'invisible',
-      callback: ()=>{ console.log('reCAPTCHA passed'); }
+      callback: ()=>{ console.log('reCAPTCHA OK'); }
     });
-    window._recaptchaVerifier.render().then(widgetId=>{
-      window._recaptchaWidgetId = widgetId;
-      console.log('reCAPTCHA ready, widgetId:', widgetId);
-    }).catch(e=> console.warn('reCAPTCHA render warn:', e.message));
-  } catch(e){ console.warn('reCAPTCHA init warn:', e.message); }
+    window._recaptchaVerifier.render().then(id=>{
+      window._recaptchaWidgetId = id;
+      console.log('reCAPTCHA ready, widgetId:', id);
+    });
+  }catch(e){ console.warn('reCAPTCHA init:', e.message); }
 });
 
 /* Check if user already verified */
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, user=>{
   if(user && user.phoneNumber){
     window._verifiedPhone = user.phoneNumber;
-    window.dispatchEvent(new CustomEvent('user-verified', { detail: { phone: user.phoneNumber } }));
+    window.dispatchEvent(new CustomEvent('user-verified',{detail:{phone:user.phoneNumber}}));
   }
 });
 
@@ -837,9 +837,6 @@ body {
 </style>
 </head>
 <body>
-
-<!-- reCAPTCHA container — must be visible in DOM at all times -->
-<div id="recaptcha-container" style="position:fixed;bottom:10px;left:10px;z-index:9999;"></div>
 
 <!-- ═══════ VERIFIED BAR ═══════ -->
 <div class="verified-bar" id="verifiedBar">
@@ -2224,11 +2221,9 @@ async function otpSend(){
   if(!/^\d{10}$/.test(phone)){
     setOtpMsg('Please enter a valid 10-digit number.','err'); return;
   }
-
-  /* Wait for Firebase if not ready */
-  if(!window._fsReady || !window._fsAuth){
+  if(!window._fsReady){
     setOtpMsg('Please wait — connecting…','err');
-    await new Promise(res => window.addEventListener('firebase-ready', res, {once:true}));
+    await new Promise(res=>window.addEventListener('firebase-ready',res,{once:true}));
   }
 
   const btn = document.getElementById('otpSendBtn');
@@ -2236,36 +2231,35 @@ async function otpSend(){
   setOtpMsg('','');
 
   try{
-    /* Use pre-initialized verifier, or create fresh one */
+    /* Use verifier attached to button */
     let verifier = window._recaptchaVerifier;
     if(!verifier){
-      verifier = new window._fsRecaptchaVerifier(auth, 'recaptcha-container', { size:'invisible' });
-      window._recaptchaVerifier = verifier;
+      verifier = new window._fsRecaptchaVerifier(window._fsAuth, 'otpSendBtn', {size:'invisible'});
       await verifier.render();
+      window._recaptchaVerifier = verifier;
     }
-
     console.log('Sending OTP to +91' + phone);
-    _otpConfirmation = await window._fsSignInWithPhone(
-      window._fsAuth, '+91' + phone, verifier
-    );
-
-    console.log('OTP sent successfully');
-    document.getElementById('otpPhoneDisplay').textContent = '+91 ' + phone;
+    _otpConfirmation = await window._fsSignInWithPhone(window._fsAuth, '+91'+phone, verifier);
+    console.log('OTP sent');
+    document.getElementById('otpPhoneDisplay').textContent = '+91 '+phone;
     document.getElementById('otpStep2').classList.add('show');
     document.getElementById('d0').focus();
-    setOtpMsg('OTP sent to +91 ' + phone,'ok');
+    setOtpMsg('OTP sent to +91 '+phone,'ok');
     startOtpTimer(30);
     btn.textContent = 'Resend OTP';
-
   } catch(e){
     console.error('OTP error:', e.code, e.message);
     setOtpMsg(friendlyOtpError(e),'err');
-    /* Reset verifier on error */
-    try{ if(window._recaptchaVerifier) await window._recaptchaVerifier.clear(); }catch(x){}
+    try{ if(window._recaptchaVerifier) window._recaptchaVerifier.clear(); }catch(x){}
     window._recaptchaVerifier = null;
+    /* Re-init verifier */
+    try{
+      window._recaptchaVerifier = new window._fsRecaptchaVerifier(window._fsAuth,'otpSendBtn',{size:'invisible'});
+      await window._recaptchaVerifier.render();
+    }catch(x){}
   } finally {
     btn.disabled = false;
-    if(btn.textContent === 'Sending…') btn.textContent = 'Send OTP';
+    if(btn.textContent==='Sending…') btn.textContent='Send OTP';
   }
 }
 
