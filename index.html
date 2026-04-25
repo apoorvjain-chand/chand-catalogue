@@ -43,7 +43,36 @@ window.addEventListener('load', ()=>{
   try{
     window._recaptchaVerifier = new RecaptchaVerifier(auth, 'otpSendBtn', {
       size: 'invisible',
-      callback: ()=>{ console.log('reCAPTCHA OK'); }
+      callback: async (token)=>{
+        console.log('reCAPTCHA OK, token received');
+        /* Call signInWithPhoneNumber immediately inside callback */
+        const phone = window._pendingPhone;
+        if(!phone) return;
+        try{
+          window._otpConfirmResult = await signInWithPhoneNumber(auth, '+91'+phone, window._recaptchaVerifier);
+          console.log('OTP sent successfully');
+          document.getElementById('otpPhoneDisplay').textContent = '+91 '+phone;
+          document.getElementById('otpStep2').classList.add('show');
+          document.getElementById('d0').focus();
+          window._setOtpMsg('OTP sent to +91 '+phone,'ok');
+          window._startOtpTimer(30);
+          const btn = document.getElementById('otpSendBtn');
+          btn.disabled = false;
+          btn.textContent = 'Resend OTP';
+        } catch(e){
+          console.error('OTP send error inside callback:', e.code, e.message);
+          window._setOtpMsg(window._friendlyOtpError(e),'err');
+          const btn = document.getElementById('otpSendBtn');
+          btn.disabled = false;
+          btn.textContent = 'Send OTP';
+        }
+      },
+      'expired-callback': ()=>{
+        console.warn('reCAPTCHA expired');
+        window._setOtpMsg('Verification expired. Please try again.','err');
+        const btn = document.getElementById('otpSendBtn');
+        if(btn){ btn.disabled=false; btn.textContent='Send OTP'; }
+      }
     });
     window._recaptchaVerifier.render().then(id=>{
       window._recaptchaWidgetId = id;
@@ -834,6 +863,9 @@ body {
 .verified-phone{font-size:11px;color:rgba(255,255,255,.7);}
 .verified-phone strong{color:#fff;font-size:12px;}
 .verified-logout{background:none;border:.5px solid rgba(255,255,255,.3);border-radius:4px;padding:3px 10px;font-family:inherit;font-size:10px;color:rgba(255,255,255,.7);cursor:pointer;}
+
+/* Hide reCAPTCHA badge */
+.grecaptcha-badge { visibility: hidden !important; opacity: 0 !important; }
 </style>
 </head>
 <body>
@@ -2230,72 +2262,60 @@ async function otpSend(){
   btn.disabled = true; btn.textContent = 'Sending…';
   setOtpMsg('','');
 
+  /* Store phone for use inside reCAPTCHA callback */
+  window._pendingPhone = phone;
+
   try{
-    /* Use verifier attached to button */
-    let verifier = window._recaptchaVerifier;
-    if(!verifier){
-      verifier = new window._fsRecaptchaVerifier(window._fsAuth, 'otpSendBtn', {size:'invisible'});
-      await verifier.render();
-      window._recaptchaVerifier = verifier;
+    if(!window._recaptchaVerifier){
+      setOtpMsg('Verification not ready. Please refresh and try again.','err');
+      btn.disabled = false; btn.textContent = 'Send OTP'; return;
     }
-    console.log('Sending OTP to +91' + phone);
-    _otpConfirmation = await window._fsSignInWithPhone(window._fsAuth, '+91'+phone, verifier);
-    console.log('OTP sent');
-    document.getElementById('otpPhoneDisplay').textContent = '+91 '+phone;
-    document.getElementById('otpStep2').classList.add('show');
-    document.getElementById('d0').focus();
-    setOtpMsg('OTP sent to +91 '+phone,'ok');
-    startOtpTimer(30);
-    btn.textContent = 'Resend OTP';
+    /* Execute reCAPTCHA — callback handles signInWithPhoneNumber */
+    console.log('Executing reCAPTCHA for +91' + phone);
+    await window._recaptchaVerifier.verify();
   } catch(e){
-    console.error('OTP error:', e.code, e.message);
+    console.error('reCAPTCHA execute error:', e.code||e.message);
     setOtpMsg(friendlyOtpError(e),'err');
-    try{ if(window._recaptchaVerifier) window._recaptchaVerifier.clear(); }catch(x){}
-    window._recaptchaVerifier = null;
-    /* Re-init verifier */
-    try{
-      window._recaptchaVerifier = new window._fsRecaptchaVerifier(window._fsAuth,'otpSendBtn',{size:'invisible'});
-      await window._recaptchaVerifier.render();
-    }catch(x){}
-  } finally {
-    btn.disabled = false;
-    if(btn.textContent==='Sending…') btn.textContent='Send OTP';
+    btn.disabled = false; btn.textContent = 'Send OTP';
   }
 }
+
+/* Expose helpers needed inside Firebase module callback */
+window._setOtpMsg      = function(msg,type){ setOtpMsg(msg,type); };
+window._startOtpTimer  = function(s){ startOtpTimer(s); };
+window._friendlyOtpError = function(e){ return friendlyOtpError(e); };
 
 /* Verify OTP */
 async function otpVerify(){
   const code = [0,1,2,3,4,5].map(i=>document.getElementById('d'+i).value).join('');
   if(code.length !== 6){ setOtpMsg('Please enter all 6 digits.','err'); return; }
-  if(!_otpConfirmation){ setOtpMsg('Please request an OTP first.','err'); return; }
+
+  /* Use confirmation from either source */
+  const confirmResult = window._otpConfirmResult || _otpConfirmation;
+  if(!confirmResult){ setOtpMsg('Please request an OTP first.','err'); return; }
 
   const btn = document.getElementById('otpVerifyBtn');
   btn.disabled = true; btn.textContent = 'Verifying…';
   setOtpMsg('','');
 
   try{
-    const result = await _otpConfirmation.confirm(code);
+    const result = await confirmResult.confirm(code);
     const phone  = result.user.phoneNumber;
     window._verifiedPhone = phone;
     clearOtpTimer();
     setOtpMsg('✅ Verified! Unlocking rates…','ok');
-
-    /* Save verified phone to localStorage for 24hrs */
     localStorage.setItem('ca_verified', JSON.stringify({phone, ts: Date.now()}));
-
-    /* Log user in Firestore */
     await fsWrite('users', sanitizePhone(phone), {
       phone, firstSeen: new Date().toISOString(), lastSeen: new Date().toISOString(),
       verifications: window._fsIncrement(1)
     });
-
     setTimeout(()=>{
       closeOtpModal();
       showVerifiedBar(phone);
-      render(); /* re-render cards with unlocked buttons */
+      render();
     }, 800);
-
   } catch(e){
+    console.error('Verify error:', e.code, e.message);
     setOtpMsg(friendlyOtpError(e),'err');
   } finally {
     btn.disabled = false; btn.textContent = 'Verify & Unlock Rates';
