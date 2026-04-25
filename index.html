@@ -2615,30 +2615,56 @@ async function loadDashboard(){
       withTimeout(getDocs(collection(db,'sessions'))),
     ]);
 
+    /* Parse and normalize — Firestore numbers come back as plain JS numbers */
+    const n = v => typeof v === 'number' ? v : (v && typeof v === 'object' && 'operand' in v ? v.operand : 0);
+
     const products={}, daily={}, categories={}, searches={}, sessions={};
-    prodSnap.forEach(d=>{ products[d.id]=d.data(); });
-    dailySnap.forEach(d=>{ daily[d.id]=d.data(); });
-    catSnap.forEach(d=>{ categories[d.id]=d.data(); });
-    searchSnap.forEach(d=>{ searches[d.id]=d.data(); });
-    sessionSnap.forEach(d=>{ sessions[d.id]=d.data(); });
+
+    prodSnap.forEach(doc=>{
+      const d = doc.data();
+      products[doc.id] = {
+        name:      d.name || doc.id,
+        cat:       d.cat  || '',
+        views:     n(d.views),
+        moqOpens:  n(d.moqOpens),
+        waClicks:  n(d.waClicks),
+      };
+    });
+
+    dailySnap.forEach(doc=>{
+      const d = doc.data();
+      daily[doc.id] = { views: n(d.views), moq: n(d.moq), wa: n(d.wa), date: d.date||doc.id };
+    });
+
+    catSnap.forEach(doc=>{
+      const d = doc.data();
+      categories[doc.id] = { name: d.name||doc.id, clicks: n(d.clicks), scrollMs: n(d.scrollMs) };
+    });
+
+    searchSnap.forEach(doc=>{
+      const d = doc.data();
+      searches[doc.id] = { term: d.term||doc.id, count: n(d.count) };
+    });
+
+    sessionSnap.forEach(doc=>{
+      const d = doc.data();
+      sessions[doc.id] = { count: n(d.count), date: d.date||doc.id };
+    });
+
+    console.log('Firestore loaded — products:', Object.keys(products).length,
+      '| sample:', JSON.stringify(Object.values(products)[0]));
 
     showLoading(false);
-    showRefreshing(false);
-
-    /* Render Firestore data — this includes ALL devices */
     renderAll({ products, daily, categories, searches, sessions });
 
   } catch(e){
-    /* Firestore failed — fall back to localStorage */
-    console.warn('Firestore unavailable, using local data:', e.message);
+    console.warn('Firestore failed:', e.message);
     showLoading(false);
-    showRefreshing(false);
     const local = JSON.parse(localStorage.getItem('ca_analytics')||'{}');
     renderAll(local);
-    /* Show warning that data may be incomplete */
     const warn = document.createElement('div');
     warn.style.cssText = 'background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:8px 12px;font-size:11px;color:#92400E;margin:8px 14px;';
-    warn.textContent = '⚠️ Showing local data only — Firebase connection failed. Check internet connection.';
+    warn.textContent = '⚠️ Showing local data — Firebase connection failed: ' + e.message;
     document.getElementById('main-content').prepend(warn);
   }
 }
