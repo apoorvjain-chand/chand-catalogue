@@ -12,6 +12,8 @@
 import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, doc, setDoc, increment }
                             from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged }
+                            from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const app = initializeApp({
   apiKey:            "AIzaSyBtGgX88_L_OiRwYFfhmvqoz22Ao4jRViY",
@@ -21,16 +23,29 @@ const app = initializeApp({
   messagingSenderId: "182483504773",
   appId:             "1:182483504773:web:ab9efcf5e5ec87d37f63ec"
 });
-const db = getFirestore(app);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+auth.useDeviceLanguage();
 
-/* Expose helpers to global scope for use in regular scripts */
-window._fsDb = db;
-window._fsDoc = doc;
-window._fsSetDoc = setDoc;
+/* Expose to global scope */
+window._fsDb        = db;
+window._fsDoc       = doc;
+window._fsSetDoc    = setDoc;
 window._fsIncrement = increment;
-window._fsReady = true;
+window._fsAuth      = auth;
+window._fsRecaptchaVerifier    = RecaptchaVerifier;
+window._fsSignInWithPhone      = signInWithPhoneNumber;
+window._fsOnAuthStateChanged   = onAuthStateChanged;
+window._fsReady     = true;
 
-/* Dispatch event so analytics engine knows Firebase is ready */
+/* Check if user already verified */
+onAuthStateChanged(auth, user => {
+  if(user && user.phoneNumber){
+    window._verifiedPhone = user.phoneNumber;
+    window.dispatchEvent(new CustomEvent('user-verified', { detail: { phone: user.phoneNumber } }));
+  }
+});
+
 window.dispatchEvent(new Event('firebase-ready'));
 </script>
 <style>
@@ -769,9 +784,94 @@ body {
 }
 .aud-btn.active { background:var(--maroon-bg);border-color:var(--maroon);color:var(--maroon); }
 .aud-label { font-size:9px;color:var(--ink-40);margin-left:auto;white-space:nowrap;align-self:center; }
+
+/* ── OTP GATE MODAL ── */
+.otp-overlay{display:none;position:fixed;inset:0;background:rgba(26,18,8,.6);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.otp-overlay.open{display:flex;}
+.otp-box{background:var(--white);border-radius:16px;padding:28px 24px;width:min(340px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.otp-logo{font-size:15px;font-weight:700;color:var(--maroon);text-align:center;margin-bottom:2px;}
+.otp-logo-hi{font-family:'Noto Sans Devanagari',sans-serif;font-size:12px;color:var(--ink-40);text-align:center;margin-bottom:16px;}
+.otp-title{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:4px;}
+.otp-sub{font-size:11px;color:var(--ink-40);margin-bottom:18px;line-height:1.5;}
+.otp-label{font-size:11px;font-weight:500;color:var(--ink-60);margin-bottom:5px;}
+.otp-input-wrap{display:flex;gap:8px;margin-bottom:12px;}
+.otp-cc{background:var(--cream);border:1px solid var(--ink-12);border-radius:8px;padding:10px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);width:52px;text-align:center;flex-shrink:0;}
+.otp-phone{flex:1;padding:10px 12px;border:1px solid var(--ink-12);border-radius:8px;font-family:inherit;font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;}
+.otp-phone:focus{border-color:var(--maroon);}
+.otp-btn{width:100%;padding:11px;background:var(--maroon);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s;margin-bottom:10px;}
+.otp-btn:hover{background:var(--maroon-lt);}
+.otp-btn:disabled{opacity:.6;cursor:not-allowed;}
+.otp-section{display:none;}
+.otp-section.show{display:block;}
+.otp-digits{display:flex;gap:8px;margin-bottom:12px;justify-content:center;}
+.otp-digit{width:42px;height:48px;border:1.5px solid var(--ink-12);border-radius:8px;font-family:inherit;font-size:20px;font-weight:600;text-align:center;outline:none;transition:border-color .2s;color:var(--ink);}
+.otp-digit:focus{border-color:var(--maroon);}
+.otp-msg{font-size:11px;text-align:center;margin-bottom:8px;min-height:16px;}
+.otp-msg.err{color:#B00020;}
+.otp-msg.ok{color:var(--maroon);}
+.otp-timer{font-size:10px;color:var(--ink-40);text-align:center;margin-bottom:8px;}
+.otp-resend{font-size:11px;color:var(--maroon);cursor:pointer;text-align:center;background:none;border:none;font-family:inherit;display:none;margin:0 auto;}
+.otp-resend.show{display:block;}
+.otp-close{width:100%;padding:8px;background:none;border:.5px solid var(--ink-12);border-radius:8px;font-family:inherit;font-size:12px;color:var(--ink-40);cursor:pointer;margin-top:6px;}
+.rate-locked{display:inline-flex;align-items:center;gap:4px;background:var(--gold-pale);border:.5px solid var(--gold);border-radius:5px;padding:2px 8px;font-size:9px;font-weight:600;color:#7A5000;cursor:pointer;white-space:nowrap;}
+.rate-locked:hover{background:var(--gold);color:#fff;}
+.verified-bar{background:var(--maroon);padding:6px 16px;display:none;align-items:center;justify-content:space-between;gap:8px;}
+.verified-bar.show{display:flex;}
+.verified-phone{font-size:11px;color:rgba(255,255,255,.7);}
+.verified-phone strong{color:#fff;font-size:12px;}
+.verified-logout{background:none;border:.5px solid rgba(255,255,255,.3);border-radius:4px;padding:3px 10px;font-family:inherit;font-size:10px;color:rgba(255,255,255,.7);cursor:pointer;}
+#recaptcha-container{position:fixed;bottom:10px;left:10px;z-index:400;}
 </style>
 </head>
 <body>
+
+<!-- ═══════ VERIFIED BAR ═══════ -->
+<div class="verified-bar" id="verifiedBar">
+  <div class="verified-phone">✅ Verified: <strong id="verifiedNum"></strong></div>
+  <button class="verified-logout" onclick="otpLogout()">Sign Out</button>
+</div>
+
+<!-- ═══════ OTP MODAL ═══════ -->
+<div class="otp-overlay" id="otpOverlay">
+  <div class="otp-box">
+    <div class="otp-logo">Chand Aushdhalaya</div>
+    <div class="otp-logo-hi">चाँद औषधालय</div>
+    <div class="otp-title">Verify to View Rates</div>
+    <div class="otp-sub">Enter your mobile number to unlock B2B rates, MOQ details and WhatsApp enquiry.</div>
+
+    <!-- Phone input -->
+    <div id="otpStep1">
+      <div class="otp-label">Mobile Number</div>
+      <div class="otp-input-wrap">
+        <div class="otp-cc">🇮🇳 +91</div>
+        <input class="otp-phone" id="otpPhone" type="tel" maxlength="10" placeholder="10-digit number" inputmode="numeric">
+      </div>
+      <button class="otp-btn" id="otpSendBtn" onclick="otpSend()">Send OTP</button>
+    </div>
+
+    <!-- OTP input -->
+    <div class="otp-section" id="otpStep2">
+      <div class="otp-label">Enter OTP sent to <span id="otpPhoneDisplay"></span></div>
+      <div class="otp-digits">
+        <input class="otp-digit" maxlength="1" inputmode="numeric" id="d0">
+        <input class="otp-digit" maxlength="1" inputmode="numeric" id="d1">
+        <input class="otp-digit" maxlength="1" inputmode="numeric" id="d2">
+        <input class="otp-digit" maxlength="1" inputmode="numeric" id="d3">
+        <input class="otp-digit" maxlength="1" inputmode="numeric" id="d4">
+        <input class="otp-digit" maxlength="1" inputmode="numeric" id="d5">
+      </div>
+      <div class="otp-msg" id="otpMsg"></div>
+      <button class="otp-btn" id="otpVerifyBtn" onclick="otpVerify()">Verify & Unlock Rates</button>
+      <div class="otp-timer" id="otpTimer"></div>
+      <button class="otp-resend" id="otpResend" onclick="otpResend()">Resend OTP</button>
+    </div>
+
+    <button class="otp-close" onclick="closeOtpModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- Invisible reCAPTCHA container -->
+<div id="recaptcha-container"></div>
 
 <!-- ═══════ MASTHEAD ═══════ -->
 <header class="masthead">
@@ -1683,11 +1783,19 @@ function render(){
     const ucs=extractUC(p.rog,p.ind,p.sr);
     const chipHtml=ucs.map(k=>{const t=ucStyle(k);return `<span class="chip" style="background:${t.bg};color:${t.tx}"><span class="chip-en">${t.en}</span>${t.hi?`<span class="chip-hi">${t.hi}</span>`:''}</span>`;}).join('');
     const pd=getProdData(p.sr,p.cat,p.n);
-    const rateBadge=pd.rate&&pd.rate!==''
-      ?`<div class="rate-badge has">₹${Number(pd.rate).toLocaleString('en-IN')} / ${pd.rateUnit||pd.pack}</div>`
-      :``;
+    const rateBadge = window._verifiedPhone
+      ? (pd.rate&&pd.rate!==''
+          ? `<div class="rate-badge has">₹${Number(pd.rate).toLocaleString('en-IN')} / ${pd.rateUnit||pd.pack}</div>`
+          : ``)
+      : `<div class="rate-badge" style="background:rgba(197,160,89,.9);color:#fff;cursor:pointer;" onclick="openOtpModal(event)">🔒 Verify to View Rate</div>`;
     const msg=encodeURIComponent(`Hello Chand Aushdhalaya, I am interested in bulk enquiry for: ${p.n} (${p.cat}). Please share pricing, MOQ and availability.`);
     const en=p.n.replace(/'/g,"\\'"), ec=p.cat.replace(/'/g,"\\'");
+    const moqBtn = window._verifiedPhone
+      ? `<button class="btn-moq" onclick="openSheet('${p.sr}','${en}','${p.hi}','${ec}',event)">📦 MOQ</button>`
+      : `<button class="btn-moq rate-locked" onclick="openOtpModal(event)">🔒 MOQ</button>`;
+    const enqBtn = window._verifiedPhone
+      ? `<button class="btn-enq" onclick="window.open('https://wa.me/919999591429?text=${msg}','_blank')">📲 Enquire</button>`
+      : `<button class="btn-enq" style="background:var(--ink-40);" onclick="openOtpModal(event)">🔒 Enquire</button>`;
     return `<div class="card${isBs?' bestseller':''}">
       <div class="card-band" style="background:${cc.c}"></div>
       <div class="card-img" style="background:${cc.bg}">
@@ -1708,8 +1816,8 @@ function render(){
             <div class="moq-val">${pd.qty}</div>
           </div>
           <div class="btn-row">
-            <button class="btn-moq" onclick="openSheet('${p.sr}','${en}','${p.hi}','${ec}',event)">📦 MOQ</button>
-            <button class="btn-enq" onclick="window.open('https://wa.me/919999591429?text=${msg}','_blank')">📲 Enquire</button>
+            ${moqBtn}
+            ${enqBtn}
           </div>
         </div>
       </div>
@@ -1843,6 +1951,7 @@ function aView(sr, name, cat){
   aSave(d);
   fsIncProduct(sr, name, cat, 'views');
   fsIncDaily('views');
+  aViewUser(sr, name, cat); /* per-user */
 }
 
 /* ── Track category click ── */
@@ -1864,6 +1973,7 @@ function aMOQ(sr, name, cat){
   aSave(d);
   fsIncProduct(sr, name, cat, 'moqOpens');
   fsIncDaily('moq');
+  aMOQUser(sr, name, cat); /* per-user */
 }
 
 /* ── Track WhatsApp click ── */
@@ -1876,6 +1986,7 @@ function aWA(sr, name, cat){
   aSave(d);
   fsIncProduct(sr, name, cat, 'waClicks');
   fsIncDaily('wa');
+  aWAUser(sr, name, cat); /* per-user */
 }
 
 /* ── Track search ── */
@@ -2073,6 +2184,242 @@ document.addEventListener('DOMContentLoaded', function(){
   if(btn) btn.addEventListener('click', openAdminPanel);
 });
 
+/* ═══════════════════════════════════════════════════════
+   OTP VERIFICATION ENGINE
+   Firebase Phone Auth — Indian numbers only (+91)
+   On verify: rates + MOQ + WhatsApp unlock for 24hrs
+   Per-user activity tracked in Firestore /users/{phone}
+═══════════════════════════════════════════════════════ */
+let _otpConfirmation = null;
+let _otpTimer        = null;
+let _otpVerifier     = null;
+
+/* Open OTP modal */
+function openOtpModal(event){
+  if(event) event.stopPropagation();
+  document.getElementById('otpOverlay').classList.add('open');
+  document.getElementById('otpPhone').focus();
+}
+function closeOtpModal(){
+  document.getElementById('otpOverlay').classList.remove('open');
+  clearOtpTimer();
+}
+
+/* Send OTP */
+async function otpSend(){
+  const phone = document.getElementById('otpPhone').value.trim();
+  if(!/^\d{10}$/.test(phone)){
+    setOtpMsg('Please enter a valid 10-digit number.','err'); return;
+  }
+  const btn = document.getElementById('otpSendBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  setOtpMsg('','');
+
+  try{
+    /* Setup invisible reCAPTCHA */
+    if(_otpVerifier){ try{ _otpVerifier.clear(); }catch(e){} }
+    _otpVerifier = new window._fsRecaptchaVerifier(
+      window._fsAuth, 'recaptcha-container', { size:'invisible' }
+    );
+    _otpConfirmation = await window._fsSignInWithPhone(
+      window._fsAuth, '+91' + phone, _otpVerifier
+    );
+    /* Show OTP input */
+    document.getElementById('otpPhoneDisplay').textContent = '+91 ' + phone;
+    document.getElementById('otpStep2').classList.add('show');
+    document.getElementById('d0').focus();
+    setOtpMsg('OTP sent to +91 ' + phone,'ok');
+    startOtpTimer(30);
+    btn.textContent = 'Resend OTP';
+  } catch(e){
+    setOtpMsg(friendlyOtpError(e),'err');
+  } finally {
+    btn.disabled = false;
+    if(btn.textContent === 'Sending…') btn.textContent = 'Send OTP';
+  }
+}
+
+/* Verify OTP */
+async function otpVerify(){
+  const code = [0,1,2,3,4,5].map(i=>document.getElementById('d'+i).value).join('');
+  if(code.length !== 6){ setOtpMsg('Please enter all 6 digits.','err'); return; }
+  if(!_otpConfirmation){ setOtpMsg('Please request an OTP first.','err'); return; }
+
+  const btn = document.getElementById('otpVerifyBtn');
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  setOtpMsg('','');
+
+  try{
+    const result = await _otpConfirmation.confirm(code);
+    const phone  = result.user.phoneNumber;
+    window._verifiedPhone = phone;
+    clearOtpTimer();
+    setOtpMsg('✅ Verified! Unlocking rates…','ok');
+
+    /* Save verified phone to localStorage for 24hrs */
+    localStorage.setItem('ca_verified', JSON.stringify({phone, ts: Date.now()}));
+
+    /* Log user in Firestore */
+    await fsWrite('users', sanitizePhone(phone), {
+      phone, firstSeen: new Date().toISOString(), lastSeen: new Date().toISOString(),
+      verifications: window._fsIncrement(1)
+    });
+
+    setTimeout(()=>{
+      closeOtpModal();
+      showVerifiedBar(phone);
+      render(); /* re-render cards with unlocked buttons */
+    }, 800);
+
+  } catch(e){
+    setOtpMsg(friendlyOtpError(e),'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Verify & Unlock Rates';
+  }
+}
+
+/* Resend */
+function otpResend(){
+  document.getElementById('otpResend').classList.remove('show');
+  clearOtpTimer();
+  otpSend();
+}
+
+/* Logout */
+async function otpLogout(){
+  try{ if(window._fsAuth) await window._fsAuth.signOut(); }catch(e){}
+  window._verifiedPhone = null;
+  localStorage.removeItem('ca_verified');
+  document.getElementById('verifiedBar').classList.remove('show');
+  render();
+}
+
+/* Show verified bar at top */
+function showVerifiedBar(phone){
+  const bar = document.getElementById('verifiedBar');
+  const num = document.getElementById('verifiedNum');
+  if(bar && num){
+    num.textContent = phone;
+    bar.classList.add('show');
+  }
+}
+
+/* OTP digit auto-advance */
+document.addEventListener('DOMContentLoaded', ()=>{
+  [0,1,2,3,4,5].forEach(i=>{
+    const el = document.getElementById('d'+i);
+    if(!el) return;
+    el.addEventListener('input', ()=>{
+      el.value = el.value.replace(/\D/g,'').slice(-1);
+      if(el.value && i < 5) document.getElementById('d'+(i+1)).focus();
+      if([0,1,2,3,4,5].every(j=>document.getElementById('d'+j).value)) otpVerify();
+    });
+    el.addEventListener('keydown', e=>{
+      if(e.key==='Backspace' && !el.value && i > 0) document.getElementById('d'+(i-1)).focus();
+    });
+  });
+
+  /* Also wire Enter on phone input */
+  const ph = document.getElementById('otpPhone');
+  if(ph) ph.addEventListener('keydown', e=>{ if(e.key==='Enter') otpSend(); });
+
+  /* Check existing verification from localStorage */
+  try{
+    const saved = JSON.parse(localStorage.getItem('ca_verified')||'null');
+    if(saved && saved.phone && Date.now() - saved.ts < 24*60*60*1000){
+      window._verifiedPhone = saved.phone;
+      showVerifiedBar(saved.phone);
+    }
+  }catch(e){}
+
+  /* Also check Firebase auth state */
+  if(window._fsOnAuthStateChanged && window._fsAuth){
+    window._fsOnAuthStateChanged(window._fsAuth, user=>{
+      if(user && user.phoneNumber && !window._verifiedPhone){
+        window._verifiedPhone = user.phoneNumber;
+        localStorage.setItem('ca_verified', JSON.stringify({phone:user.phoneNumber, ts:Date.now()}));
+        showVerifiedBar(user.phoneNumber);
+        render();
+      }
+    });
+  } else {
+    window.addEventListener('firebase-ready', ()=>{
+      window._fsOnAuthStateChanged(window._fsAuth, user=>{
+        if(user && user.phoneNumber && !window._verifiedPhone){
+          window._verifiedPhone = user.phoneNumber;
+          localStorage.setItem('ca_verified', JSON.stringify({phone:user.phoneNumber, ts:Date.now()}));
+          showVerifiedBar(user.phoneNumber);
+          render();
+        }
+      });
+    }, {once:true});
+  }
+});
+
+/* OTP helpers */
+function setOtpMsg(msg, type){
+  const el = document.getElementById('otpMsg');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'otp-msg' + (type ? ' '+type : '');
+}
+function startOtpTimer(sec){
+  clearOtpTimer();
+  let s = sec;
+  const el = document.getElementById('otpTimer');
+  const rb = document.getElementById('otpResend');
+  if(rb) rb.classList.remove('show');
+  const tick = ()=>{
+    if(!el) return;
+    el.textContent = s > 0 ? `Resend OTP in ${s}s` : '';
+    if(s <= 0){ if(rb) rb.classList.add('show'); return; }
+    s--; _otpTimer = setTimeout(tick, 1000);
+  };
+  tick();
+}
+function clearOtpTimer(){ if(_otpTimer){ clearTimeout(_otpTimer); _otpTimer=null; } }
+function sanitizePhone(p){ return p.replace(/[^0-9]/g,''); }
+function friendlyOtpError(e){
+  const c = e.code||'';
+  if(c.includes('invalid-phone'))      return 'Invalid phone number. Try again.';
+  if(c.includes('too-many-requests'))  return 'Too many attempts. Wait a few minutes.';
+  if(c.includes('invalid-verification-code')) return 'Wrong OTP. Please try again.';
+  if(c.includes('code-expired'))       return 'OTP expired. Request a new one.';
+  if(c.includes('quota-exceeded'))     return 'SMS quota exceeded. Try later.';
+  return 'Something went wrong. Please try again.';
+}
+
+/* ── Per-user activity tracking ── */
+async function aViewUser(sr, name, cat){
+  if(!window._verifiedPhone) return;
+  const ph = sanitizePhone(window._verifiedPhone);
+  await fsWrite('users', ph, {
+    phone: window._verifiedPhone,
+    lastSeen: new Date().toISOString(),
+    [`products.${sr}.name`]: name,
+    [`products.${sr}.cat`]:  cat,
+    [`products.${sr}.views`]: window._fsIncrement(1),
+  });
+}
+async function aMOQUser(sr, name, cat){
+  if(!window._verifiedPhone) return;
+  const ph = sanitizePhone(window._verifiedPhone);
+  await fsWrite('users', ph, {
+    phone: window._verifiedPhone,
+    lastSeen: new Date().toISOString(),
+    [`products.${sr}.moqOpens`]: window._fsIncrement(1),
+  });
+}
+async function aWAUser(sr, name, cat){
+  if(!window._verifiedPhone) return;
+  const ph = sanitizePhone(window._verifiedPhone);
+  await fsWrite('users', ph, {
+    phone: window._verifiedPhone,
+    lastSeen: new Date().toISOString(),
+    [`products.${sr}.waClicks`]: window._fsIncrement(1),
+  });
+}
+
 /* ═══════════════════════════════════
    INIT
 ═══════════════════════════════════ */
@@ -2228,6 +2575,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     <div class="tab" onclick="switchTab('products',this)">Products</div>
     <div class="tab" onclick="switchTab('categories',this)">Categories</div>
     <div class="tab" onclick="switchTab('searches',this)">Searches</div>
+    <div class="tab" onclick="switchTab('users',this)">👤 Users</div>
   </div>
 
   <!-- OVERVIEW TAB -->
@@ -2308,6 +2656,35 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     </div>
   </div>
 
+  <!-- USERS TAB -->
+  <div class="tab-panel" id="tab-users">
+    <div class="sec">
+      <div class="sec-hdr">
+        <span class="sec-title">Verified Users</span>
+        <span class="sec-badge" id="user-count">0 users</span>
+      </div>
+      <div class="sec-body" style="padding:0;overflow-x:auto;">
+        <table class="prod-table" id="user-table">
+          <thead class="pt-head">
+            <tr>
+              <th>Mobile</th>
+              <th>Last Seen</th>
+              <th class="right">Views</th>
+              <th class="right">MOQ</th>
+              <th class="right">WA</th>
+              <th>Top Product Interest</th>
+            </tr>
+          </thead>
+          <tbody id="user-tbody"></tbody>
+        </table>
+        <div class="empty hidden" id="user-empty">
+          <div class="empty-icon">👤</div>
+          <div class="empty-txt">No verified users yet. Users appear here after OTP verification.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 
@@ -2370,55 +2747,32 @@ async function loadDashboard(){
     ]);
 
     /* Fetch ALL collections from Firestore in parallel */
-    const [prodSnap, dailySnap, catSnap, searchSnap, sessionSnap] = await Promise.all([
+    const [prodSnap, dailySnap, catSnap, searchSnap, sessionSnap, userSnap] = await Promise.all([
       withTimeout(getDocs(collection(db,'products'))),
       withTimeout(getDocs(collection(db,'daily'))),
       withTimeout(getDocs(collection(db,'categories'))),
       withTimeout(getDocs(collection(db,'searches'))),
       withTimeout(getDocs(collection(db,'sessions'))),
+      withTimeout(getDocs(collection(db,'users'))),
     ]);
 
     /* Parse and normalize — Firestore numbers come back as plain JS numbers */
     const n = v => typeof v === 'number' ? v : (v && typeof v === 'object' && 'operand' in v ? v.operand : 0);
 
-    const products={}, daily={}, categories={}, searches={}, sessions={};
-
-    prodSnap.forEach(doc=>{
-      const d = doc.data();
-      products[doc.id] = {
-        name:      d.name || doc.id,
-        cat:       d.cat  || '',
-        views:     n(d.views),
-        moqOpens:  n(d.moqOpens),
-        waClicks:  n(d.waClicks),
-      };
-    });
-
-    dailySnap.forEach(doc=>{
-      const d = doc.data();
-      daily[doc.id] = { views: n(d.views), moq: n(d.moq), wa: n(d.wa), date: d.date||doc.id };
-    });
-
-    catSnap.forEach(doc=>{
-      const d = doc.data();
-      categories[doc.id] = { name: d.name||doc.id, clicks: n(d.clicks), scrollMs: n(d.scrollMs) };
-    });
-
-    searchSnap.forEach(doc=>{
-      const d = doc.data();
-      searches[doc.id] = { term: d.term||doc.id, count: n(d.count) };
-    });
-
-    sessionSnap.forEach(doc=>{
-      const d = doc.data();
-      sessions[doc.id] = { count: n(d.count), date: d.date||doc.id };
-    });
+    const products={}, daily={}, categories={}, searches={}, sessions={}, users={};
+    prodSnap.forEach(doc=>{ const d=doc.data(); products[doc.id]={name:d.name||doc.id,cat:d.cat||'',views:n(d.views),moqOpens:n(d.moqOpens),waClicks:n(d.waClicks)}; });
+    dailySnap.forEach(doc=>{ const d=doc.data(); daily[doc.id]={views:n(d.views),moq:n(d.moq),wa:n(d.wa),date:d.date||doc.id}; });
+    catSnap.forEach(doc=>{ const d=doc.data(); categories[doc.id]={name:d.name||doc.id,clicks:n(d.clicks),scrollMs:n(d.scrollMs)}; });
+    searchSnap.forEach(doc=>{ const d=doc.data(); searches[doc.id]={term:d.term||doc.id,count:n(d.count)}; });
+    sessionSnap.forEach(doc=>{ const d=doc.data(); sessions[doc.id]={count:n(d.count),date:d.date||doc.id}; });
+    userSnap.forEach(doc=>{ users[doc.id]=doc.data(); });
 
     console.log('Firestore loaded — products:', Object.keys(products).length,
+      '| users:', Object.keys(users).length,
       '| sample:', JSON.stringify(Object.values(products)[0]));
 
     showLoading(false);
-    renderAll({ products, daily, categories, searches, sessions });
+    renderAll({ products, daily, categories, searches, sessions, users });
 
   } catch(e){
     console.warn('Firestore failed:', e.message);
@@ -2453,24 +2807,71 @@ function renderAll(d){
   renderProducts(d);
   renderCategories(d);
   renderSearches(d);
+  renderUsers(d);
 }
 
 /* ── METRICS ── */
 function renderMetrics(d){
-  const prods = Object.values(d.products||{});
+  const prods    = Object.values(d.products||{});
   const totalViews = prods.reduce((s,p)=>s+(p.views||0),0);
   const totalMOQ   = prods.reduce((s,p)=>s+(p.moqOpens||0),0);
   const totalWA    = prods.reduce((s,p)=>s+(p.waClicks||0),0);
-  const sessions   = Object.values(d.sessions||{}).reduce((s,x)=>s+(x.count||0),0) || (d.sessions||0);
+  const sessions   = Object.values(d.sessions||{}).reduce((s,x)=>s+(x.count||0),0)||(d.sessions||0);
+  const userCount  = Object.keys(d.users||{}).length;
   const moqRate    = totalViews ? Math.round(totalMOQ/totalViews*100) : 0;
-  const waRate     = totalMOQ  ? Math.round(totalWA/totalMOQ*100)   : 0;
+  const waRate     = totalMOQ  ? Math.round(totalWA/totalMOQ*100)    : 0;
 
   document.getElementById('metrics').innerHTML = `
     <div class="mc"><div class="mc-lbl">Total Card Views</div><div class="mc-val">${totalViews.toLocaleString('en-IN')}</div><div class="mc-sub">${Object.keys(d.products||{}).length} products seen</div></div>
-    <div class="mc"><div class="mc-lbl">Sessions</div><div class="mc-val">${sessions.toLocaleString('en-IN')}</div><div class="mc-sub">Unique days browsed</div></div>
+    <div class="mc"><div class="mc-lbl">Verified Users</div><div class="mc-val">${userCount.toLocaleString('en-IN')}</div><div class="mc-sub">OTP verified buyers</div></div>
     <div class="mc"><div class="mc-lbl">MOQ Opens</div><div class="mc-val">${totalMOQ.toLocaleString('en-IN')}</div><div class="mc-sub">${moqRate}% of views</div></div>
     <div class="mc"><div class="mc-lbl">WA Enquiries</div><div class="mc-val">${totalWA.toLocaleString('en-IN')}</div><div class="mc-sub">${waRate}% of MOQ opens</div></div>
   `;
+}
+
+/* ── USERS ── */
+function renderUsers(d){
+  const users = d.users || {};
+  const list  = Object.values(users).sort((a,b)=>(b.lastSeen||'').localeCompare(a.lastSeen||''));
+
+  document.getElementById('user-count').textContent = list.length + ' users';
+
+  if(!list.length){
+    document.getElementById('user-empty').classList.remove('hidden');
+    return;
+  }
+
+  document.getElementById('user-tbody').innerHTML = list.map(u=>{
+    const prods  = u.products || {};
+    /* Total activity */
+    const views  = Object.values(prods).reduce((s,p)=>s+(p.views||0),0);
+    const moq    = Object.values(prods).reduce((s,p)=>s+(p.moqOpens||0),0);
+    const wa     = Object.values(prods).reduce((s,p)=>s+(p.waClicks||0),0);
+
+    /* Top product by score */
+    const topProd = Object.entries(prods)
+      .map(([sr,p])=>({sr,...p, score:(p.views||0)+(p.moqOpens||0)*3+(p.waClicks||0)*5}))
+      .sort((a,b)=>b.score-a.score)[0];
+
+    const lastSeen = u.lastSeen
+      ? new Date(u.lastSeen).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+      : '—';
+
+    /* Mask middle digits for privacy — show +91 XXXXX last4 */
+    const phone  = u.phone || '—';
+    const masked = phone.length >= 10
+      ? phone.slice(0,-6).replace(/\d/g,'*') + phone.slice(-6,-2) + '**'
+      : phone;
+
+    return `<tr class="pt-row">
+      <td><div class="pt-name">${masked}</div></td>
+      <td style="font-size:10px;color:var(--ink-60);">${lastSeen}</td>
+      <td class="pt-num">${views}</td>
+      <td class="pt-num">${moq}</td>
+      <td class="pt-enq">${wa}</td>
+      <td style="font-size:10px;color:var(--ink);">${topProd ? `${topProd.name||topProd.sr} <span style="color:var(--ink-60)">(${topProd.score}pts)</span>` : '—'}</td>
+    </tr>`;
+  }).join('');
 }
 
 /* ── DAILY CHART ── */
@@ -2614,9 +3015,10 @@ async function exportData(){
   try{
     const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const db = window._fsDb;
-    const [p,da,c,s] = await Promise.all([
+    const [p,da,c,s,u] = await Promise.all([
       getDocs(collection(db,'products')), getDocs(collection(db,'daily')),
-      getDocs(collection(db,'categories')), getDocs(collection(db,'searches'))
+      getDocs(collection(db,'categories')), getDocs(collection(db,'searches')),
+      getDocs(collection(db,'users'))
     ]);
 
     const n = v => typeof v==='number' ? v : 0;
@@ -2667,6 +3069,24 @@ async function exportData(){
     XLSX.utils.book_append_sheet(wb, ws2, 'Daily Activity');
     XLSX.utils.book_append_sheet(wb, ws3, 'Categories');
     XLSX.utils.book_append_sheet(wb, ws4, 'Searches');
+
+    /* Sheet 5 — Users */
+    const userRows = [['Mobile (Masked)','First Seen','Last Seen','Total Views','MOQ Opens','WA Clicks','Top Product']];
+    u.forEach(doc=>{
+      const ud = doc.data();
+      const prods = ud.products||{};
+      const views = Object.values(prods).reduce((s,p)=>s+(p.views||0),0);
+      const moq   = Object.values(prods).reduce((s,p)=>s+(p.moqOpens||0),0);
+      const wa    = Object.values(prods).reduce((s,p)=>s+(p.waClicks||0),0);
+      const top   = Object.entries(prods).sort((a,b)=>((b[1].views||0)+(b[1].moqOpens||0)*3)-((a[1].views||0)+(a[1].moqOpens||0)*3))[0];
+      const phone = ud.phone||doc.id;
+      const masked = phone.length>=10 ? phone.slice(0,-6).replace(/\d/g,'*')+phone.slice(-6,-2)+'**' : phone;
+      userRows.push([masked, ud.firstSeen||'—', ud.lastSeen||'—', views, moq, wa, top?top[1].name||top[0]:'—']);
+    });
+
+    const ws5 = XLSX.utils.aoa_to_sheet(userRows);
+    ws5['!cols'] = [{wch:16},{wch:20},{wch:20},{wch:10},{wch:10},{wch:10},{wch:28}];
+    XLSX.utils.book_append_sheet(wb, ws5, 'Verified Users');
 
     XLSX.writeFile(wb, 'Chand-Analytics-' + new Date().toISOString().slice(0,10) + '.xlsx');
 
