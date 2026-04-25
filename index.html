@@ -2608,26 +2608,72 @@ function switchTab(name, el){
   document.getElementById('tab-'+name).classList.add('active');
 }
 
-/* ── EXPORT ── */
-function exportData(){
+/* ── EXPORT TO EXCEL ── */
+async function exportData(){
   if(!window._fsReady){ alert('Firebase not ready yet. Try again in a moment.'); return; }
-  import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(async ({ collection, getDocs })=>{
+  try{
+    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const db = window._fsDb;
     const [p,da,c,s] = await Promise.all([
       getDocs(collection(db,'products')), getDocs(collection(db,'daily')),
       getDocs(collection(db,'categories')), getDocs(collection(db,'searches'))
     ]);
-    const out = { products:{}, daily:{}, categories:{}, searches:{} };
-    p.forEach(d=>out.products[d.id]=d.data());
-    da.forEach(d=>out.daily[d.id]=d.data());
-    c.forEach(d=>out.categories[d.id]=d.data());
-    s.forEach(d=>out.searches[d.id]=d.data());
-    const blob = new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href=url; a.download='chand-analytics-'+new Date().toISOString().slice(0,10)+'.json';
-    a.click(); URL.revokeObjectURL(url);
-  });
+
+    const n = v => typeof v==='number' ? v : 0;
+
+    /* Sheet 1 — Products ranked by heat score */
+    const prodRows = [['SR No.','Product Name','Category','Views','MOQ Opens','WA Enquiries','Heat Score']];
+    const prods = [];
+    p.forEach(d=>{ const x=d.data(); prods.push({sr:d.id,...x}); });
+    prods.sort((a,b)=>(n(b.views)+n(b.moqOpens)*3+n(b.waClicks)*5)-(n(a.views)+n(a.moqOpens)*3+n(a.waClicks)*5));
+    prods.forEach(x=>{
+      const score = n(x.views)+n(x.moqOpens)*3+n(x.waClicks)*5;
+      prodRows.push([x.sr, x.name||'—', x.cat||'—', n(x.views), n(x.moqOpens), n(x.waClicks), score]);
+    });
+
+    /* Sheet 2 — Daily activity */
+    const dailyRows = [['Date','Views','MOQ Opens','WA Enquiries']];
+    const days = [];
+    da.forEach(d=>{ days.push({date:d.id,...d.data()}); });
+    days.sort((a,b)=>a.date.localeCompare(b.date));
+    days.forEach(x=>{ dailyRows.push([x.date, n(x.views), n(x.moq), n(x.wa)]); });
+
+    /* Sheet 3 — Categories */
+    const catRows = [['Category','Clicks','Scroll Time (mins)']];
+    c.forEach(d=>{ const x=d.data(); catRows.push([x.name||d.id, n(x.clicks), Math.round(n(x.scrollMs)/60000)]); });
+
+    /* Sheet 4 — Search terms */
+    const searchRows = [['Search Term','Count']];
+    const searches = [];
+    s.forEach(d=>{ searches.push({term:d.data().term||d.id, count:n(d.data().count)}); });
+    searches.sort((a,b)=>b.count-a.count);
+    searches.forEach(x=>{ searchRows.push([x.term, x.count]); });
+
+    /* Load SheetJS and build workbook */
+    const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');
+    const wb   = XLSX.utils.book_new();
+
+    const ws1 = XLSX.utils.aoa_to_sheet(prodRows);
+    const ws2 = XLSX.utils.aoa_to_sheet(dailyRows);
+    const ws3 = XLSX.utils.aoa_to_sheet(catRows);
+    const ws4 = XLSX.utils.aoa_to_sheet(searchRows);
+
+    ws1['!cols'] = [{wch:8},{wch:30},{wch:16},{wch:8},{wch:10},{wch:12},{wch:10}];
+    ws2['!cols'] = [{wch:12},{wch:8},{wch:10},{wch:12}];
+    ws3['!cols'] = [{wch:22},{wch:8},{wch:18}];
+    ws4['!cols'] = [{wch:26},{wch:8}];
+
+    XLSX.utils.book_append_sheet(wb, ws1, 'Products');
+    XLSX.utils.book_append_sheet(wb, ws2, 'Daily Activity');
+    XLSX.utils.book_append_sheet(wb, ws3, 'Categories');
+    XLSX.utils.book_append_sheet(wb, ws4, 'Searches');
+
+    XLSX.writeFile(wb, 'Chand-Analytics-' + new Date().toISOString().slice(0,10) + '.xlsx');
+
+  } catch(e){
+    console.error('Export failed:', e);
+    alert('Export failed: ' + e.message);
+  }
 }
 
 /* ── RESET (localStorage only — Firestore data preserved) ── */
