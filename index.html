@@ -2587,22 +2587,17 @@ document.getElementById('pw-input').addEventListener('keydown', e=>{ if(e.key===
 
 /* ── LOAD DATA FROM FIRESTORE ── */
 async function loadDashboard(){
-  /* Step 1 — show localStorage data INSTANTLY while Firestore loads */
+  /* Show local data INSTANTLY — no waiting */
   const local = JSON.parse(localStorage.getItem('ca_analytics')||'{}');
-  if(local && local.products && Object.keys(local.products).length > 0){
-    showLoading(false);
-    renderAll(local);
-    showRefreshing(true);
-  } else {
-    showLoading(true);
-  }
+  showLoading(false);
+  renderAll(local);
 
-  /* Step 2 — load Firestore in background with 8s timeout */
+  /* Then try Firestore in background — 5s timeout, silent fail */
   try{
     const fsReady = window._fsReady
       ? Promise.resolve()
       : Promise.race([
-          new Promise(res => window.addEventListener('firebase-ready', res, { once:true })),
+          new Promise(res => window.addEventListener('firebase-ready', res, {once:true})),
           new Promise((_,rej) => setTimeout(()=>rej(new Error('timeout')), 5000))
         ]);
     await fsReady;
@@ -2610,15 +2605,14 @@ async function loadDashboard(){
     const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const db = window._fsDb;
 
-    /* Fetch with individual 8s timeout per collection */
-    const fetchCol = name => Promise.race([
-      getDocs(collection(db, name)),
-      new Promise((_,rej) => setTimeout(()=>rej(new Error('timeout:'+name)), 8000))
-    ]);
+    const withTimeout = (p, ms=6000) => Promise.race([p, new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
 
     const [prodSnap, dailySnap, catSnap, searchSnap, sessionSnap] = await Promise.all([
-      fetchCol('products'), fetchCol('daily'), fetchCol('categories'),
-      fetchCol('searches'), fetchCol('sessions'),
+      withTimeout(getDocs(collection(db,'products'))),
+      withTimeout(getDocs(collection(db,'daily'))),
+      withTimeout(getDocs(collection(db,'categories'))),
+      withTimeout(getDocs(collection(db,'searches'))),
+      withTimeout(getDocs(collection(db,'sessions'))),
     ]);
 
     const products={}, daily={}, categories={}, searches={}, sessions={};
@@ -2628,19 +2622,32 @@ async function loadDashboard(){
     searchSnap.forEach(d=>{ searches[d.id]=d.data(); });
     sessionSnap.forEach(d=>{ sessions[d.id]=d.data(); });
 
-    showLoading(false);
+    /* Merge Firestore data with local and re-render */
+    const merged = mergeData(local, {products, daily, categories, searches, sessions});
     showRefreshing(false);
-    renderAll({ products, daily, categories, searches, sessions });
+    renderAll(merged);
 
   } catch(e){
-    showLoading(false);
+    /* Silent fail — local data already showing */
     showRefreshing(false);
-    /* Already showing localStorage data — just log the error */
-    console.warn('Firestore load failed:', e.message);
-    if(!local || !local.products){
-      renderAll({});
-    }
+    console.warn('Firestore unavailable:', e.message);
   }
+}
+
+/* Merge local + Firestore — take max of each counter */
+function mergeData(local, remote){
+  if(!remote || !remote.products) return local;
+  if(!local || !local.products) return remote;
+  const merged = JSON.parse(JSON.stringify(remote));
+  Object.entries(local.products||{}).forEach(([sr,lp])=>{
+    if(!merged.products[sr]) merged.products[sr] = lp;
+    else {
+      merged.products[sr].views    = Math.max(merged.products[sr].views||0,    lp.views||0);
+      merged.products[sr].moqOpens = Math.max(merged.products[sr].moqOpens||0, lp.moqOpens||0);
+      merged.products[sr].waClicks = Math.max(merged.products[sr].waClicks||0, lp.waClicks||0);
+    }
+  });
+  return merged;
 }
 
 function showLoading(on){
@@ -2653,8 +2660,8 @@ function showRefreshing(on){
   if(!el && on){
     el = document.createElement('div');
     el.id = 'refresh-state';
-    el.style.cssText = 'text-align:center;padding:6px;font-size:10px;color:var(--ink-60);background:var(--cream);border-bottom:1px solid var(--ink-06);';
-    el.innerHTML = '🔄 Syncing latest data from Firebase…';
+    el.style.cssText = 'text-align:center;padding:5px;font-size:10px;color:var(--ink-60);background:var(--cream);';
+    el.textContent = '🔄 Syncing from Firebase…';
     const main = document.getElementById('main-content');
     if(main) main.prepend(el);
   }
