@@ -820,10 +820,12 @@ body {
 .verified-phone{font-size:11px;color:rgba(255,255,255,.7);}
 .verified-phone strong{color:#fff;font-size:12px;}
 .verified-logout{background:none;border:.5px solid rgba(255,255,255,.3);border-radius:4px;padding:3px 10px;font-family:inherit;font-size:10px;color:rgba(255,255,255,.7);cursor:pointer;}
-#recaptcha-container{position:fixed;bottom:10px;left:10px;z-index:400;}
 </style>
 </head>
 <body>
+
+<!-- Invisible reCAPTCHA container — must be outside all modals -->
+<div id="recaptcha-container" style="position:fixed;bottom:0;left:0;z-index:9999;"></div>
 
 <!-- ═══════ VERIFIED BAR ═══════ -->
 <div class="verified-bar" id="verifiedBar">
@@ -869,9 +871,6 @@ body {
     <button class="otp-close" onclick="closeOtpModal()">Cancel</button>
   </div>
 </div>
-
-<!-- Invisible reCAPTCHA container -->
-<div id="recaptcha-container"></div>
 
 <!-- ═══════ MASTHEAD ═══════ -->
 <header class="masthead">
@@ -2211,28 +2210,63 @@ async function otpSend(){
   if(!/^\d{10}$/.test(phone)){
     setOtpMsg('Please enter a valid 10-digit number.','err'); return;
   }
+
+  /* Wait for Firebase if not ready */
+  if(!window._fsReady || !window._fsAuth){
+    setOtpMsg('Please wait — Firebase is loading…','err');
+    await new Promise(res => window.addEventListener('firebase-ready', res, {once:true}));
+  }
+
   const btn = document.getElementById('otpSendBtn');
   btn.disabled = true; btn.textContent = 'Sending…';
   setOtpMsg('','');
 
   try{
-    /* Setup invisible reCAPTCHA */
-    if(_otpVerifier){ try{ _otpVerifier.clear(); }catch(e){} }
+    /* Clear old verifier */
+    if(_otpVerifier){
+      try{ await _otpVerifier.clear(); }catch(e){}
+      _otpVerifier = null;
+    }
+
+    /* Create fresh reCAPTCHA verifier */
+    const container = document.getElementById('recaptcha-container');
+    container.innerHTML = ''; /* clear old widget */
+
     _otpVerifier = new window._fsRecaptchaVerifier(
-      window._fsAuth, 'recaptcha-container', { size:'invisible' }
+      window._fsAuth,
+      'recaptcha-container',
+      {
+        size: 'invisible',
+        callback: () => { console.log('reCAPTCHA solved'); },
+        'expired-callback': () => {
+          setOtpMsg('reCAPTCHA expired. Please try again.','err');
+          _otpVerifier = null;
+        }
+      }
     );
+
+    /* Render verifier first */
+    await _otpVerifier.render();
+    console.log('reCAPTCHA rendered, sending OTP to +91' + phone);
+
     _otpConfirmation = await window._fsSignInWithPhone(
       window._fsAuth, '+91' + phone, _otpVerifier
     );
-    /* Show OTP input */
+
+    console.log('OTP sent successfully');
+
+    /* Show OTP input step */
     document.getElementById('otpPhoneDisplay').textContent = '+91 ' + phone;
     document.getElementById('otpStep2').classList.add('show');
     document.getElementById('d0').focus();
     setOtpMsg('OTP sent to +91 ' + phone,'ok');
     startOtpTimer(30);
     btn.textContent = 'Resend OTP';
+
   } catch(e){
+    console.error('OTP send error:', e.code, e.message);
     setOtpMsg(friendlyOtpError(e),'err');
+    if(_otpVerifier){ try{ _otpVerifier.clear(); }catch(x){} _otpVerifier = null; }
   } finally {
     btn.disabled = false;
     if(btn.textContent === 'Sending…') btn.textContent = 'Send OTP';
