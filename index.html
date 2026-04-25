@@ -38,6 +38,20 @@ window._fsSignInWithPhone      = signInWithPhoneNumber;
 window._fsOnAuthStateChanged   = onAuthStateChanged;
 window._fsReady     = true;
 
+/* Initialize reCAPTCHA verifier immediately on load */
+window.addEventListener('load', ()=>{
+  try{
+    window._recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: ()=>{ console.log('reCAPTCHA passed'); }
+    });
+    window._recaptchaVerifier.render().then(widgetId=>{
+      window._recaptchaWidgetId = widgetId;
+      console.log('reCAPTCHA ready, widgetId:', widgetId);
+    }).catch(e=> console.warn('reCAPTCHA render warn:', e.message));
+  } catch(e){ console.warn('reCAPTCHA init warn:', e.message); }
+});
+
 /* Check if user already verified */
 onAuthStateChanged(auth, user => {
   if(user && user.phoneNumber){
@@ -824,8 +838,8 @@ body {
 </head>
 <body>
 
-<!-- Invisible reCAPTCHA container — must be outside all modals -->
-<div id="recaptcha-container" style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:9999;display:none;background:#fff;padding:8px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.2);"></div>
+<!-- reCAPTCHA container — must be visible in DOM at all times -->
+<div id="recaptcha-container" style="position:fixed;bottom:10px;left:10px;z-index:9999;"></div>
 
 <!-- ═══════ VERIFIED BAR ═══════ -->
 <div class="verified-bar" id="verifiedBar">
@@ -2213,7 +2227,7 @@ async function otpSend(){
 
   /* Wait for Firebase if not ready */
   if(!window._fsReady || !window._fsAuth){
-    setOtpMsg('Please wait — Firebase is loading…','err');
+    setOtpMsg('Please wait — connecting…','err');
     await new Promise(res => window.addEventListener('firebase-ready', res, {once:true}));
   }
 
@@ -2222,61 +2236,38 @@ async function otpSend(){
   setOtpMsg('','');
 
   try{
-    /* Clear old verifier */
-    if(_otpVerifier){
-      try{ await _otpVerifier.clear(); }catch(e){}
-      _otpVerifier = null;
+    /* Use pre-initialized verifier, or create fresh one */
+    let verifier = window._recaptchaVerifier;
+    if(!verifier){
+      verifier = new window._fsRecaptchaVerifier(auth, 'recaptcha-container', { size:'invisible' });
+      window._recaptchaVerifier = verifier;
+      await verifier.render();
     }
 
-    /* Create fresh reCAPTCHA verifier — normal size for reliability */
-    const container = document.getElementById('recaptcha-container');
-    container.innerHTML = ''; /* clear old widget */
-
-    _otpVerifier = new window._fsRecaptchaVerifier(
-      window._fsAuth,
-      'recaptcha-container',
-      {
-        size: 'normal',
-        callback: async (token) => {
-          console.log('reCAPTCHA solved, sending OTP...');
-          try{
-            _otpConfirmation = await window._fsSignInWithPhone(
-              window._fsAuth, '+91' + phone, _otpVerifier
-            );
-            console.log('OTP sent successfully');
-            document.getElementById('otpPhoneDisplay').textContent = '+91 ' + phone;
-            document.getElementById('otpStep2').classList.add('show');
-            document.getElementById('d0').focus();
-            setOtpMsg('OTP sent to +91 ' + phone,'ok');
-            startOtpTimer(30);
-            btn.textContent = 'Resend OTP';
-            btn.disabled = false;
-            /* Hide recaptcha after success */
-            container.style.display = 'none';
-          } catch(e){
-            console.error('OTP send error:', e.code, e.message);
-            setOtpMsg(friendlyOtpError(e),'err');
-            btn.disabled = false;
-            btn.textContent = 'Send OTP';
-          }
-        },
-        'expired-callback': () => {
-          setOtpMsg('reCAPTCHA expired. Please try again.','err');
-          btn.disabled = false;
-          btn.textContent = 'Send OTP';
-          container.innerHTML = '';
-          _otpVerifier = null;
-        }
-      }
+    console.log('Sending OTP to +91' + phone);
+    _otpConfirmation = await window._fsSignInWithPhone(
+      window._fsAuth, '+91' + phone, verifier
     );
 
-    /* Show recaptcha widget */
-    container.style.display = 'block';
-    await _otpVerifier.render();
-    console.log('reCAPTCHA rendered — waiting for user to solve...');
-    setOtpMsg('Please complete the verification below.','ok');
-    /* Don't call signInWithPhoneNumber here — callback above handles it */
-    return;
+    console.log('OTP sent successfully');
+    document.getElementById('otpPhoneDisplay').textContent = '+91 ' + phone;
+    document.getElementById('otpStep2').classList.add('show');
+    document.getElementById('d0').focus();
+    setOtpMsg('OTP sent to +91 ' + phone,'ok');
+    startOtpTimer(30);
+    btn.textContent = 'Resend OTP';
+
+  } catch(e){
+    console.error('OTP error:', e.code, e.message);
+    setOtpMsg(friendlyOtpError(e),'err');
+    /* Reset verifier on error */
+    try{ if(window._recaptchaVerifier) await window._recaptchaVerifier.clear(); }catch(x){}
+    window._recaptchaVerifier = null;
+  } finally {
+    btn.disabled = false;
+    if(btn.textContent === 'Sending…') btn.textContent = 'Send OTP';
+  }
+}
 
   } catch(e){
     console.error('OTP send error:', e.code, e.message);
