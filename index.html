@@ -2269,16 +2269,6 @@ async function otpSend(){
   }
 }
 
-  } catch(e){
-    console.error('OTP send error:', e.code, e.message);
-    setOtpMsg(friendlyOtpError(e),'err');
-    if(_otpVerifier){ try{ _otpVerifier.clear(); }catch(x){} _otpVerifier = null; }
-  } finally {
-    btn.disabled = false;
-    if(btn.textContent === 'Sending…') btn.textContent = 'Send OTP';
-  }
-}
-
 /* Verify OTP */
 async function otpVerify(){
   const code = [0,1,2,3,4,5].map(i=>document.getElementById('d'+i).value).join('');
