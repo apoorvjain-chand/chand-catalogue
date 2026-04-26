@@ -939,8 +939,8 @@ const COL = {
   RATE:       'RATE',
   RATE_UNIT:  'RATE_UNIT',
   PACK_SIZES: 'PACK_SIZES',
-  STOCK:      'STOCK',       /* In Stock / Out of Stock */
-  IMAGE_URL:  'IMAGE_URL',   /* direct image URL */
+  STOCK:      'STOCK',
+  IMAGE_URL:  'IMAGE_URL',
   NOTES:      'NOTES',
 };
 
@@ -1602,8 +1602,19 @@ let sheetOk   = false;
 function parseCSV(text){
   const lines = text.trim().split('\n');
   if(lines.length < 2) return [];
-  const h = lines[0].split(',').map(x=>x.trim().replace(/^"|"$/g,''));
-  return lines.slice(1).map(line=>{
+
+  /* Find the header row — look for the row containing SR_NO */
+  let headerIdx = 0;
+  for(let i=0; i<Math.min(5,lines.length); i++){
+    if(lines[i].includes('SR_NO')||lines[i].includes('SR NO')||lines[i].includes('SR_no')){
+      headerIdx = i; break;
+    }
+  }
+
+  const h = lines[headerIdx].split(',').map(x=>x.trim().replace(/^"|"$/g,'').replace(/\s+/g,'_').toUpperCase());
+  console.log('Headers found at row', headerIdx+1, ':', h);
+
+  return lines.slice(headerIdx+1).map(line=>{
     const vals = [];
     let cur='', inQ=false;
     for(const ch of line){
@@ -1615,7 +1626,7 @@ function parseCSV(text){
     const row={};
     h.forEach((k,i)=>{ row[k]=(vals[i]||'').replace(/^"|"$/g,'').trim(); });
     return row;
-  });
+  }).filter(r=>Object.values(r).some(v=>v!==''));
 }
 
 async function fetchSheet(){
