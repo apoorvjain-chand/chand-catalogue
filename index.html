@@ -1603,30 +1603,60 @@ function parseCSV(text){
   const lines = text.trim().split('\n');
   if(lines.length < 2) return [];
 
-  /* Find the header row — look for the row containing SR_NO */
+  /* Auto-detect delimiter — tab, comma or semicolon */
+  const firstLine = lines[0];
+  const tabs   = (firstLine.match(/\t/g)||[]).length;
+  const commas = (firstLine.match(/,/g)||[]).length;
+  const semis  = (firstLine.match(/;/g)||[]).length;
+  const delim  = tabs > commas && tabs > semis ? '\t' : semis > commas ? ';' : ',';
+  console.log('CSV delimiter:', delim='\t'?'TAB':delim, 'tabs:'+tabs+' commas:'+commas+' semis:'+semis);
+
+  /* Find header row */
   let headerIdx = 0;
   for(let i=0; i<Math.min(5,lines.length); i++){
-    if(lines[i].includes('SR_NO')||lines[i].includes('SR NO')||lines[i].includes('SR_no')){
+    const upper = lines[i].toUpperCase();
+    if(upper.includes('SR') && (upper.includes('NO') || upper.includes('PRODUCT'))){
       headerIdx = i; break;
     }
   }
 
-  const h = lines[headerIdx].split(',').map(x=>x.trim().replace(/^"|"$/g,'').replace(/\s+/g,'_').toUpperCase());
-  console.log('Headers found at row', headerIdx+1, ':', h);
+  /* Parse headers — strip newlines, quotes, normalise to key */
+  const rawHeaders = lines[headerIdx].split(delim);
+  const h = rawHeaders.map(x=>
+    x.replace(/"/g,'')       /* remove quotes */
+     .replace(/\r/g,'')      /* remove carriage returns */
+     .replace(/\n/g,' ')     /* replace newlines with space */
+     .trim()
+  );
+  console.log('Raw headers:', h);
 
+  /* Map raw headers to COL keys */
+  function matchHeader(raw){
+    const u = raw.toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(u.includes('SRNO')||u.startsWith('SRNO')||u==='SR')          return 'SR_NO';
+    if(u.includes('PRODUCTNAME')||u.includes('PRODUCT'))            return 'PRODUCT_NAME';
+    if(u.includes('CATEGORY')||u.includes('CAT'))                   return 'CATEGORY';
+    if(u.includes('MOQQTY')||u.includes('MOQQ')||(u.includes('MOQ')&&u.includes('QTY'))) return 'MOQ_QTY';
+    if(u.includes('MOQUNIT')||(u.includes('MOQ')&&u.includes('UNIT'))) return 'MOQ_UNIT';
+    if(u.includes('RATEUNIT')||(u.includes('RATE')&&u.includes('UNIT'))) return 'RATE_UNIT';
+    if(u.includes('RATE')||u.includes('RATEINR'))                   return 'RATE';
+    if(u.includes('PACKSIZE')||u.includes('PACK'))                  return 'PACK_SIZES';
+    if(u.includes('STOCK'))                                         return 'STOCK';
+    if(u.includes('IMAGE')||u.includes('URL')||u.includes('PHOTO')) return 'IMAGE_URL';
+    if(u.includes('NOTE'))                                          return 'NOTES';
+    return raw.toUpperCase().replace(/\s+/g,'_');
+  }
+
+  const mappedHeaders = h.map(matchHeader);
+  console.log('Mapped headers:', mappedHeaders);
+
+  /* Parse data rows */
   return lines.slice(headerIdx+1).map(line=>{
-    const vals = [];
-    let cur='', inQ=false;
-    for(const ch of line){
-      if(ch==='"'){ inQ=!inQ; }
-      else if(ch===','&&!inQ){ vals.push(cur.trim()); cur=''; }
-      else cur+=ch;
-    }
-    vals.push(cur.trim());
+    const vals = line.split(delim).map(v=>v.replace(/"/g,'').replace(/\r/g,'').trim());
     const row={};
-    h.forEach((k,i)=>{ row[k]=(vals[i]||'').replace(/^"|"$/g,'').trim(); });
+    mappedHeaders.forEach((k,i)=>{ if(k) row[k]=(vals[i]||''); });
     return row;
-  }).filter(r=>Object.values(r).some(v=>v!==''));
+  }).filter(r=>r['SR_NO']&&r['SR_NO']!=='');
 }
 
 async function fetchSheet(){
@@ -1638,19 +1668,21 @@ async function fetchSheet(){
     const text = await res.text();
     const rows = parseCSV(text);
     sheetData={};
-    rows.forEach(r=>{ if(r[COL.SR]) sheetData[r[COL.SR].trim()]=r; });
+    rows.forEach(r=>{
+      if(!r[COL.SR]) return;
+      const sr = r[COL.SR].trim();
+      /* Store under both raw key and zero-padded key */
+      sheetData[sr] = r;
+      /* Also store padded version (1 → 001, 12 → 012) */
+      const padded = sr.padStart(3,'0');
+      if(padded !== sr) sheetData[padded] = r;
+    });
     sheetOk=true;
 
-    /* Debug — remove after confirming */
+    /* Debug */
     const keys = Object.keys(sheetData);
-    console.log('Sheet loaded. Row count:', keys.length);
-    console.log('First SR keys:', keys.slice(0,5));
-    if(keys.length > 0){
-      const sample = sheetData[keys[0]];
-      console.log('Sample row columns:', Object.keys(sample));
-      console.log('Sample row data:', sample);
-    }
-    /* End debug */
+    console.log('Sheet loaded. Row count:', rows.length, '| Keys sample:', keys.slice(0,6));
+    if(rows.length > 0) console.log('Sample row:', rows[0]);
 
     setSyncState('live','Rates live · '+new Date().toLocaleTimeString());
     render();
