@@ -390,6 +390,27 @@ body {
 }
 
 /* Best-seller ribbon */
+/* ── STOCK BADGE ── */
+.stock-badge {
+  position: absolute;
+  top: 7px; left: 7px;
+  font-size: 8px; font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  z-index: 2;
+}
+.stock-badge.in  { background: rgba(45,90,39,.85); color: #C8F0D4; }
+.stock-badge.out { background: rgba(176,0,32,.85);  color: #FFD0D8; }
+.card.out-of-stock { opacity: .72; }
+.card.out-of-stock .card-img { filter: grayscale(.35); }
+.prod-img { width:100%; height:100%; object-fit:cover; display:block; }
+.sh-prod-img { width:100%; max-height:160px; object-fit:cover; border-radius:8px; margin-bottom:12px; display:none; }
+.sh-stock-badge { display:inline-block; font-size:11px; font-weight:600; padding:3px 10px; border-radius:10px; margin-bottom:12px; }
+.sh-stock-badge.in  { background:#E6F4EC; color:#1E6B3A; }
+.sh-stock-badge.out { background:#FFE4E6; color:#B00020; }
+
 .bs-ribbon {
   position: absolute;
   top: 6px; right: 6px;
@@ -873,9 +894,11 @@ body {
   <div class="sheet" id="sheet">
     <div class="sheet-handle-wrap"><span class="sheet-handle"></span></div>
     <div class="sheet-header">
+      <img class="sh-prod-img" id="shProductImg" alt="Product image">
       <div class="sheet-cat-badge" id="shCat"></div>
       <div class="sheet-name" id="shName"></div>
       <div class="sheet-name-hi" id="shNameHi"></div>
+      <div class="sh-stock-badge in" id="shStock">🟢 In Stock</div>
     </div>
     <div class="sheet-warn" id="shWarn">⚠️ Google Sheet not yet connected. Showing default MOQ data. Add your sheet URL to display live rates.</div>
     <div class="rate-card" id="rateCard">
@@ -905,9 +928,21 @@ body {
 /* ═══════════════════════════════════
    CONFIG
 ═══════════════════════════════════ */
-const SHEET_CSV_URL = ''; // ← paste your Google Sheet CSV URL here
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vROq8xuxWvvrYA3jB7FKi2BB0zdeWQtZwHDqPygsXfukO0p6lT7O6zBrMM8R5p08Q/pub?gid=225780839&single=true&output=csv';
 
-const COL = { SR:'SR_NO', NAME:'PRODUCT_NAME', CAT:'CATEGORY', MOQ_QTY:'MOQ_QTY', MOQ_UNIT:'MOQ_UNIT', RATE:'RATE', RATE_UNIT:'RATE_UNIT', PACK_SIZES:'PACK_SIZES', NOTES:'NOTES' };
+const COL = {
+  SR:         'SR_NO',
+  NAME:       'PRODUCT_NAME',
+  CAT:        'CATEGORY',
+  MOQ_QTY:    'MOQ_QTY',
+  MOQ_UNIT:   'MOQ_UNIT',
+  RATE:       'RATE',
+  RATE_UNIT:  'RATE_UNIT',
+  PACK_SIZES: 'PACK_SIZES',
+  STOCK:      'STOCK',       /* In Stock / Out of Stock */
+  IMAGE_URL:  'IMAGE_URL',   /* direct image URL */
+  NOTES:      'NOTES',
+};
 
 /* ═══════════════════════════════════
    CATEGORY CONFIG
@@ -1609,13 +1644,23 @@ function setSyncState(s,t){
 ═══════════════════════════════════ */
 function getCatConf(n){ return CATS.find(c=>c.n===n)||CATS[1]; }
 function getProdData(sr,cat,name){
-  if(PROD_OVERRIDES[name]) return {...PROD_OVERRIDES[name],rate:null,rateUnit:null};
+  if(PROD_OVERRIDES[name]) return {...PROD_OVERRIDES[name],rate:null,rateUnit:null,stock:'In Stock',imageUrl:''};
   if(sheetOk&&sheetData[sr]){
     const r=sheetData[sr];
-    return {qty:r[COL.MOQ_QTY]||'—',pack:r[COL.MOQ_UNIT]||'—',format:r[COL.CAT]||cat,packSizes:r[COL.PACK_SIZES]||'—',notes:r[COL.NOTES]||'',rate:r[COL.RATE]||null,rateUnit:r[COL.RATE_UNIT]||''};
+    return {
+      qty:      r[COL.MOQ_QTY]||'—',
+      pack:     r[COL.MOQ_UNIT]||'—',
+      format:   r[COL.CAT]||cat,
+      packSizes:r[COL.PACK_SIZES]||'—',
+      notes:    r[COL.NOTES]||'',
+      rate:     r[COL.RATE]||null,
+      rateUnit: r[COL.RATE_UNIT]||'',
+      stock:    r[COL.STOCK]||'In Stock',
+      imageUrl: r[COL.IMAGE_URL]||'',
+    };
   }
   const def=CAT_MOQ[cat]||{qty:'1 Kg',pack:'As required',format:'Various',packSizes:'As required',notes:''};
-  return {...def,rate:null,rateUnit:null};
+  return {...def,rate:null,rateUnit:null,stock:'In Stock',imageUrl:''};
 }
 
 /* Audience filter — just changes display emphasis, not filtering */
@@ -1694,22 +1739,33 @@ function render(){
     const ucs=extractUC(p.rog,p.ind,p.sr);
     const chipHtml=ucs.map(k=>{const t=ucStyle(k);return `<span class="chip" style="background:${t.bg};color:${t.tx}"><span class="chip-en">${t.en}</span>${t.hi?`<span class="chip-hi">${t.hi}</span>`:''}</span>`;}).join('');
     const pd=getProdData(p.sr,p.cat,p.n);
-    const rateBadge=pd.rate&&pd.rate!==''
-      ?`<div class="rate-badge has">₹${Number(pd.rate).toLocaleString('en-IN')} / ${pd.rateUnit||pd.pack}</div>`
-      :``;
+    const rateBadge=``; /* Rate shown only in MOQ popup */
     const msg=encodeURIComponent(`Hello Chand Aushdhalaya, I am interested in bulk enquiry for: ${p.n} (${p.cat}). Please share pricing, MOQ and availability.`);
     const en=p.n.replace(/'/g,"\\'"), ec=p.cat.replace(/'/g,"\\'");
     const moqBtn=`<button class="btn-moq" onclick="openSheet('${p.sr}','${en}','${p.hi}','${ec}',event)">📦 MOQ</button>`;
     const enqBtn=`<button class="btn-enq" onclick="window.open('https://wa.me/919999591429?text=${msg}','_blank')">📲 Enquire</button>`;
 
-    return `<div class="card${isBs?' bestseller':''}">
+    /* Stock badge */
+    const isOut = pd.stock && pd.stock.toLowerCase().includes('out');
+    const stockBadge = `<span class="stock-badge ${isOut?'out':'in'}">${isOut?'Out of Stock':'In Stock'}</span>`;
+
+    /* Image: photo if available, category emoji as fallback */
+    const cardVisual = pd.imageUrl
+      ? `<div class="card-img" style="background:${cc.bg};padding:0;overflow:hidden;">
+           <img src="${pd.imageUrl}" alt="${p.n}" class="prod-img" onerror="this.parentElement.innerHTML='<div class=\\'card-img-bg\\' style=\\'background-image:radial-gradient(circle,${cc.c}22 1px,transparent 1px);background-size:12px 12px\\'></div><span class=\\'card-emoji\\'>${cc.e}</span>'">
+           ${isBs?'<span class="bs-ribbon">⭐ Best Seller</span>':''}
+           ${stockBadge}
+         </div>`
+      : `<div class="card-img" style="background:${cc.bg};">
+           <div class="card-img-bg" style="background-image:radial-gradient(circle, ${cc.c}22 1px, transparent 1px);background-size:12px 12px"></div>
+           <span class="card-emoji">${cc.e}</span>
+           ${isBs?'<span class="bs-ribbon">⭐ Best Seller</span>':''}
+           ${stockBadge}
+         </div>`;
+
+    return `<div class="card${isBs?' bestseller':''}${isOut?' out-of-stock':''}">
       <div class="card-band" style="background:${cc.c}"></div>
-      <div class="card-img" style="background:${cc.bg}">
-        <div class="card-img-bg" style="background-image:radial-gradient(circle, ${cc.c}22 1px, transparent 1px);background-size:12px 12px"></div>
-        <span class="card-emoji">${cc.e}</span>
-        ${isBs?'<span class="bs-ribbon">⭐ Best Seller</span>':''}
-        ${rateBadge}
-      </div>
+      ${cardVisual}
       <div class="card-body">
         <div class="card-cat" style="background:${cc.bg};color:${cc.c}">${cc.e} ${p.cat}</div>
         <div class="card-name">${p.n}</div>
@@ -1745,6 +1801,27 @@ function openSheet(sr,name,nameHi,cat,event){
   document.getElementById('shName').textContent=name;
   document.getElementById('shNameHi').textContent=nameHi;
 
+  /* Product image in sheet header */
+  const shImg = document.getElementById('shProductImg');
+  if(shImg){
+    if(pd.imageUrl){
+      shImg.src = pd.imageUrl;
+      shImg.style.display = 'block';
+      shImg.onerror = ()=>{ shImg.style.display='none'; };
+    } else {
+      shImg.style.display = 'none';
+    }
+  }
+
+  /* Stock status */
+  const isOut = pd.stock && pd.stock.toLowerCase().includes('out');
+  const stockEl = document.getElementById('shStock');
+  if(stockEl){
+    stockEl.textContent = isOut ? '🔴 Out of Stock' : '🟢 In Stock';
+    stockEl.className = 'sh-stock-badge '+(isOut?'out':'in');
+  }
+
+  /* Rate */
   const rc=document.getElementById('rateCard');
   const rEl=document.getElementById('shRate');
   const rPer=document.getElementById('shRatePer');
