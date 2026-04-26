@@ -1609,7 +1609,7 @@ function parseCSV(text){
   const commas = (firstLine.match(/,/g)||[]).length;
   const semis  = (firstLine.match(/;/g)||[]).length;
   const delim  = tabs > commas && tabs > semis ? '\t' : semis > commas ? ';' : ',';
-  console.log('CSV delimiter:', delim='\t'?'TAB':delim, 'tabs:'+tabs+' commas:'+commas+' semis:'+semis);
+  console.log('CSV delimiter:', delim==='\t'?'TAB':delim, 'tabs:'+tabs+' commas:'+commas+' semis:'+semis);
 
   /* Find header row */
   let headerIdx = 0;
