@@ -1603,58 +1603,62 @@ function parseCSV(text){
   const lines = text.trim().split('\n');
   if(lines.length < 2) return [];
 
-  /* Auto-detect delimiter — tab, comma or semicolon */
-  const firstLine = lines[0];
-  const tabs   = (firstLine.match(/\t/g)||[]).length;
-  const commas = (firstLine.match(/,/g)||[]).length;
-  const semis  = (firstLine.match(/;/g)||[]).length;
-  const delim  = tabs > commas && tabs > semis ? '\t' : semis > commas ? ';' : ',';
-  console.log('CSV delimiter:', delim==='\t'?'TAB':delim, 'tabs:'+tabs+' commas:'+commas+' semis:'+semis);
+  /* Auto-detect delimiter */
+  const sample = lines.slice(0,3).join('\n');
+  const tabs   = (sample.match(/\t/g)||[]).length;
+  const commas = (sample.match(/,/g)||[]).length;
+  const semis  = (sample.match(/;/g)||[]).length;
+  const delim  = tabs >= commas && tabs >= semis ? '\t' : semis > commas ? ';' : ',';
+  console.log('Delimiter:', delim==='\t'?'TAB':delim);
 
-  /* Find header row */
+  /* Find header row — the row containing SR identifier */
   let headerIdx = 0;
   for(let i=0; i<Math.min(5,lines.length); i++){
-    const upper = lines[i].toUpperCase();
-    if(upper.includes('SR') && (upper.includes('NO') || upper.includes('PRODUCT'))){
+    const u = lines[i].toUpperCase().replace(/[^A-Z0-9\t,;]/g,'');
+    if(u.startsWith('SR')||u.includes('SRNO')||u.includes('PRODUCTNAME')){
       headerIdx = i; break;
     }
   }
 
-  /* Parse headers — strip newlines, quotes, normalise to key */
-  const rawHeaders = lines[headerIdx].split(delim);
-  const h = rawHeaders.map(x=>
-    x.replace(/"/g,'')       /* remove quotes */
-     .replace(/\r/g,'')      /* remove carriage returns */
-     .replace(/\n/g,' ')     /* replace newlines with space */
-     .trim()
-  );
-  console.log('Raw headers:', h);
+  /* Parse headers */
+  const rawH = lines[headerIdx].split(delim).map(x=>x.replace(/"/g,'').replace(/\r/g,'').trim());
+  console.log('Raw headers:', rawH);
 
-  /* Map raw headers to COL keys */
-  function matchHeader(raw){
+  /* Map to standard keys */
+  function toKey(raw){
     const u = raw.toUpperCase().replace(/[^A-Z0-9]/g,'');
-    if(u.includes('SRNO')||u.startsWith('SRNO')||u==='SR')          return 'SR_NO';
-    if(u.includes('PRODUCTNAME')||u.includes('PRODUCT'))            return 'PRODUCT_NAME';
-    if(u.includes('CATEGORY')||u.includes('CAT'))                   return 'CATEGORY';
-    if(u.includes('MOQQTY')||u.includes('MOQQ')||(u.includes('MOQ')&&u.includes('QTY'))) return 'MOQ_QTY';
-    if(u.includes('MOQUNIT')||(u.includes('MOQ')&&u.includes('UNIT'))) return 'MOQ_UNIT';
-    if(u.includes('RATEUNIT')||(u.includes('RATE')&&u.includes('UNIT'))) return 'RATE_UNIT';
-    if(u.includes('RATE')||u.includes('RATEINR'))                   return 'RATE';
-    if(u.includes('PACKSIZE')||u.includes('PACK'))                  return 'PACK_SIZES';
-    if(u.includes('STOCK'))                                         return 'STOCK';
+    if(u.startsWith('SR')&&u.length<=4)                              return 'SR_NO';
+    if(u.includes('SRNO'))                                            return 'SR_NO';
+    if(u.includes('PRODUCT')||u.includes('NAME'))                    return 'PRODUCT_NAME';
+    if(u.includes('CATEGORY')||u==='CAT')                            return 'CATEGORY';
+    if(u.includes('MOQ')&&(u.includes('QTY')||u.includes('MIN')))   return 'MOQ_QTY';
+    if(u.includes('MOQ')&&u.includes('UNIT'))                        return 'MOQ_UNIT';
+    if(u.includes('MOQ'))                                             return 'MOQ_QTY';
+    if(u.includes('RATEUNIT')||u.includes('RATEPE'))                 return 'RATE_UNIT';
+    if(u.includes('RATE')||u.includes('PRICE')||u.includes('MRP'))  return 'RATE';
+    if(u.includes('PACK'))                                            return 'PACK_SIZES';
+    if(u.includes('STOCK'))                                           return 'STOCK';
     if(u.includes('IMAGE')||u.includes('URL')||u.includes('PHOTO')) return 'IMAGE_URL';
-    if(u.includes('NOTE'))                                          return 'NOTES';
-    return raw.toUpperCase().replace(/\s+/g,'_');
+    if(u.includes('NOTE'))                                            return 'NOTES';
+    return u||'COL'+Math.random();
   }
+  const mappedH = rawH.map(toKey);
+  console.log('Mapped headers:', mappedH);
 
-  const mappedHeaders = h.map(matchHeader);
-  console.log('Mapped headers:', mappedHeaders);
+  /* Skip any subtitle rows immediately after header */
+  let dataStart = headerIdx + 1;
+  while(dataStart < lines.length){
+    const firstVal = lines[dataStart].split(delim)[0].replace(/"/g,'').trim();
+    /* Skip if first cell is not a number (subtitle row like "do not edit") */
+    if(firstVal === '' || isNaN(Number(firstVal.replace(/^0+/,'')))) dataStart++;
+    else break;
+  }
+  console.log('Data starts at row:', dataStart+1);
 
-  /* Parse data rows */
-  return lines.slice(headerIdx+1).map(line=>{
+  return lines.slice(dataStart).map(line=>{
     const vals = line.split(delim).map(v=>v.replace(/"/g,'').replace(/\r/g,'').trim());
     const row={};
-    mappedHeaders.forEach((k,i)=>{ if(k) row[k]=(vals[i]||''); });
+    mappedH.forEach((k,i)=>{ if(k) row[k]=(vals[i]||''); });
     return row;
   }).filter(r=>r['SR_NO']&&r['SR_NO']!=='');
 }
