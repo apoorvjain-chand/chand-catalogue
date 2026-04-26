@@ -1624,13 +1624,26 @@ async function fetchSheet(){
   try{
     const res=await fetch(SHEET_CSV_URL);
     if(!res.ok) throw new Error();
-    const rows = parseCSV(await res.text());
+    const text = await res.text();
+    const rows = parseCSV(text);
     sheetData={};
     rows.forEach(r=>{ if(r[COL.SR]) sheetData[r[COL.SR].trim()]=r; });
     sheetOk=true;
+
+    /* Debug — remove after confirming */
+    const keys = Object.keys(sheetData);
+    console.log('Sheet loaded. Row count:', keys.length);
+    console.log('First SR keys:', keys.slice(0,5));
+    if(keys.length > 0){
+      const sample = sheetData[keys[0]];
+      console.log('Sample row columns:', Object.keys(sample));
+      console.log('Sample row data:', sample);
+    }
+    /* End debug */
+
     setSyncState('live','Rates live · '+new Date().toLocaleTimeString());
     render();
-  }catch(e){ setSyncState('error','Sheet error · Default rates shown'); }
+  }catch(e){ setSyncState('error','Sheet error · Default rates shown'); console.error('Sheet fetch error:',e); }
 }
 
 function setSyncState(s,t){
