@@ -1600,67 +1600,67 @@ let sheetOk   = false;
    GOOGLE SHEET FETCH
 ═══════════════════════════════════ */
 function parseCSV(text){
-  const lines = text.trim().split('\n');
-  if(lines.length < 2) return [];
+  /* Split into lines handling \r\n and \n */
+  const allLines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
 
-  /* Auto-detect delimiter */
-  const sample = lines.slice(0,3).join('\n');
-  const tabs   = (sample.match(/\t/g)||[]).length;
-  const commas = (sample.match(/,/g)||[]).length;
-  const semis  = (sample.match(/;/g)||[]).length;
-  const delim  = tabs >= commas && tabs >= semis ? '\t' : semis > commas ? ';' : ',';
-  console.log('Delimiter:', delim==='\t'?'TAB':delim);
+  /* Split a single line by delimiter, respecting quoted fields */
+  function splitLine(line, delim){
+    const vals=[]; let cur='', inQ=false;
+    for(let i=0; i<line.length; i++){
+      const ch = line[i];
+      if(ch==='"'){ inQ=!inQ; continue; }
+      if(ch===delim && !inQ){ vals.push(cur.trim()); cur=''; continue; }
+      cur += ch;
+    }
+    vals.push(cur.trim());
+    return vals;
+  }
 
-  /* Find header row — the row containing SR identifier */
-  let headerIdx = 0;
-  for(let i=0; i<Math.min(5,lines.length); i++){
-    const u = lines[i].toUpperCase().replace(/[^A-Z0-9\t,;]/g,'');
-    if(u.startsWith('SR')||u.includes('SRNO')||u.includes('PRODUCTNAME')){
-      headerIdx = i; break;
+  /* Detect delimiter from the line with most separators */
+  let delim = ',';
+  let maxCols = 0;
+  for(const line of allLines.slice(0,5)){
+    const t = (line.match(/\t/g)||[]).length;
+    const c = (line.match(/,/g)||[]).length;
+    const s = (line.match(/;/g)||[]).length;
+    const max = Math.max(t,c,s);
+    if(max > maxCols){ maxCols=max; delim = t>=c&&t>=s?'\t':s>c?';':',';}
+  }
+  console.log('Delimiter:', delim==='\t'?'TAB':delim, 'maxCols:',maxCols);
+
+  /* Find the data start row — first row where col[0] is a pure number */
+  let dataStart = 0;
+  for(let i=0; i<Math.min(10, allLines.length); i++){
+    const cols = splitLine(allLines[i], delim);
+    const first = cols[0].replace(/\D/g,'');
+    if(first !== '' && !isNaN(Number(first))){
+      dataStart = i;
+      console.log('Data starts at row:', i+1, '| First value:', cols[0], '| Cols:', cols.length);
+      break;
     }
   }
 
-  /* Parse headers */
-  const rawH = lines[headerIdx].split(delim).map(x=>x.replace(/"/g,'').replace(/\r/g,'').trim());
-  console.log('Raw headers:', rawH);
+  /* Column order matches our template exactly:
+     0:SR_NO  1:PRODUCT_NAME  2:CATEGORY  3:MOQ_QTY  4:MOQ_UNIT
+     5:RATE   6:RATE_UNIT     7:PACK_SIZES 8:STOCK   9:IMAGE_URL  10:NOTES */
+  const KEYS = ['SR_NO','PRODUCT_NAME','CATEGORY','MOQ_QTY','MOQ_UNIT','RATE','RATE_UNIT','PACK_SIZES','STOCK','IMAGE_URL','NOTES'];
 
-  /* Map to standard keys */
-  function toKey(raw){
-    const u = raw.toUpperCase().replace(/[^A-Z0-9]/g,'');
-    if(u.startsWith('SR')&&u.length<=4)                              return 'SR_NO';
-    if(u.includes('SRNO'))                                            return 'SR_NO';
-    if(u.includes('PRODUCT')||u.includes('NAME'))                    return 'PRODUCT_NAME';
-    if(u.includes('CATEGORY')||u==='CAT')                            return 'CATEGORY';
-    if(u.includes('MOQ')&&(u.includes('QTY')||u.includes('MIN')))   return 'MOQ_QTY';
-    if(u.includes('MOQ')&&u.includes('UNIT'))                        return 'MOQ_UNIT';
-    if(u.includes('MOQ'))                                             return 'MOQ_QTY';
-    if(u.includes('RATEUNIT')||u.includes('RATEPE'))                 return 'RATE_UNIT';
-    if(u.includes('RATE')||u.includes('PRICE')||u.includes('MRP'))  return 'RATE';
-    if(u.includes('PACK'))                                            return 'PACK_SIZES';
-    if(u.includes('STOCK'))                                           return 'STOCK';
-    if(u.includes('IMAGE')||u.includes('URL')||u.includes('PHOTO')) return 'IMAGE_URL';
-    if(u.includes('NOTE'))                                            return 'NOTES';
-    return u||'COL'+Math.random();
+  const rows = [];
+  for(let i=dataStart; i<allLines.length; i++){
+    const line = allLines[i];
+    if(!line.trim()) continue;
+    const cols = splitLine(line, delim);
+    if(!cols[0].replace(/\D/g,'')) continue; /* skip if first col not a number */
+    const row = {};
+    KEYS.forEach((k,j)=>{ row[k] = (cols[j]||'').trim(); });
+    /* Pad SR_NO to 3 digits */
+    if(row.SR_NO) row.SR_NO = row.SR_NO.replace(/\D/g,'').padStart(3,'0');
+    rows.push(row);
   }
-  const mappedH = rawH.map(toKey);
-  console.log('Mapped headers:', mappedH);
 
-  /* Skip any subtitle rows immediately after header */
-  let dataStart = headerIdx + 1;
-  while(dataStart < lines.length){
-    const firstVal = lines[dataStart].split(delim)[0].replace(/"/g,'').trim();
-    /* Skip if first cell is not a number (subtitle row like "do not edit") */
-    if(firstVal === '' || isNaN(Number(firstVal.replace(/^0+/,'')))) dataStart++;
-    else break;
-  }
-  console.log('Data starts at row:', dataStart+1);
-
-  return lines.slice(dataStart).map(line=>{
-    const vals = line.split(delim).map(v=>v.replace(/"/g,'').replace(/\r/g,'').trim());
-    const row={};
-    mappedH.forEach((k,i)=>{ if(k) row[k]=(vals[i]||''); });
-    return row;
-  }).filter(r=>r['SR_NO']&&r['SR_NO']!=='');
+  console.log('Parsed rows:', rows.length);
+  if(rows.length>0) console.log('Sample:', JSON.stringify(rows[0]));
+  return rows;
 }
 
 async function fetchSheet(){
