@@ -2473,15 +2473,22 @@ function render(){
         <div class="card-footer">
           <div class="card-footer-section">
             <div class="moq-label">MRP</div>
-            <div class="card-mrp-big">${pd.mrp ? `₹${Number(pd.mrp).toLocaleString('en-IN')}` : '—'}</div>
+            <div class="card-mrp-big">${pd.mrp ? `₹${Number(pd.mrp).toLocaleString('en-IN')}` : '<span style="color:var(--ink-40);font-size:11px;">—</span>'}</div>
           </div>
           <div class="card-footer-section card-footer-divider">
             <div class="moq-label">Min. Order</div>
             <div class="moq-val">${pd.qty}</div>
           </div>
-          <div class="card-footer-section card-footer-divider card-footer-offer">
+          <div class="card-footer-section card-footer-divider card-footer-offer" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',null)">
             <div class="moq-label">Discounted Rate</div>
-            <div class="card-mrp-big">${pd.mrp ? (() => { const dr = pd.discRate ? Number(pd.discRate) : Math.round(Number(pd.mrp)*(1-(Number(pd.discPct)||35)/100)); const s = '₹'+dr.toLocaleString('en-IN'); return `<span>${s.charAt(0)}</span><span class="offer-blurred">${s.slice(1)}</span>`; })() : '<span class="offer-blurred">₹***</span>'}</div>
+            <div class="card-mrp-big">${(() => {
+              if(pd.mrp){
+                const dr = pd.discRate ? Number(pd.discRate) : Math.round(Number(pd.mrp)*(1-(Number(pd.discPct)||35)/100));
+                const s = '₹'+dr.toLocaleString('en-IN');
+                return `<span>${s.charAt(0)}</span><span class="offer-blurred">${s.slice(1)}</span>`;
+              }
+              return `<span class="offer-blurred" style="filter:blur(4px)">₹***</span>`;
+            })()}</div>
             <div class="offer-lock">🔓 Enquire</div>
           </div>
         </div>
