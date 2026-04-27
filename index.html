@@ -2494,17 +2494,13 @@ function render(){
           </div>
           <div class="card-footer-section card-footer-divider card-footer-offer" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',null)">
             <div class="moq-label">Discounted Rate</div>
-            <div class="card-mrp-big">${(() => {
-              const mrp = pd.mrp ? Number(pd.mrp) : null;
-              const pct = Number(pd.discPct)||35;
-              const dr  = pd.discRate && !isNaN(Number(pd.discRate))
-                ? Number(pd.discRate)
-                : mrp ? Math.round(mrp*(1-pct/100)) : null;
-              if(dr){
-                const s = '₹'+dr.toLocaleString('en-IN');
-                return `<span>${s.charAt(0)}</span><span class="offer-blurred">${s.slice(1)}</span>`;
+            <div class="card-mrp-big">${(()=>{
+              const dr = pd.discRate ? Number(pd.discRate) : (pd.mrp ? Math.round(Number(pd.mrp)*(1-(Number(pd.discPct)||35)/100)) : null);
+              if(dr && dr > 0){
+                const s = '\u20B9'+dr.toLocaleString('en-IN');
+                return '<span>'+s.charAt(0)+'</span><span class="offer-blurred">'+s.slice(1)+'</span>';
               }
-              return `<span style="color:var(--ink-40);filter:blur(3px);font-size:14px;">₹•••</span>`;
+              return '<span class="offer-blurred" style="font-size:14px;">\u20B9\u2022\u2022\u2022</span>';
             })()}</div>
             <div class="offer-lock">🔓 Enquire</div>
           </div>
