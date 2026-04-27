@@ -2274,6 +2274,7 @@ async function fetchSheet(){
       if(padded !== sr) sheetData[padded] = r;
     });
     sheetOk=true;
+    console.log('Sheet sample row 1:', JSON.stringify(Object.entries(sheetData).slice(0,1)));
     setSyncState('live','Rates live · '+new Date().toLocaleTimeString());
     render();
   }catch(e){ setSyncState('error','Sheet error · Default rates shown'); console.error('Sheet fetch error:',e); }
