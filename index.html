@@ -1300,11 +1300,6 @@ body {
    CONFIG
 ═══════════════════════════════════ */
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBkj6ZYCTD15lRyBs5BWVRzVNrGoQhBZED1UeGQEB1SsrhfjIrsd-G15lSBWO7dg/pub?gid=2331857&single=true&output=csv';
-/* Fallback export URL formats to try */
-const SHEET_URLS = [
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vROq8xuxWvvrYA3jB7FKi2BB0zdeWQtZwHDqPygsXfukO0p6lT7O6zBrMM8R5p08Q/pub?gid=225780839&single=true&output=csv',
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vROq8xuxWvvrYA3jB7FKi2BB0zdeWQtZwHDqPygsXfukO0p6lT7O6zBrMM8R5p08Q/pub?output=csv&gid=225780839',
-];
 
 const COL = {
   SR:           'SR_NO',
@@ -2295,37 +2290,6 @@ async function fetchSheet(){
     setSyncState('live','Rates live · '+new Date().toLocaleTimeString());
     render();
   }catch(e){ setSyncState('error','Sheet error · Default rates shown'); console.error('Sheet fetch error:',e.message); }
-}
-    let text = null;
-    for(const url of urls){
-      try{
-        const res = await fetch(url);
-        if(!res.ok) continue;
-        const t = await res.text();
-        if(t && t.length > 200 && !t.includes('allowlist') && !t.startsWith('<')){
-          text = t;
-          console.log('Sheet fetched OK, length:', t.length, 'first chars:', t.slice(0,80));
-          break;
-        } else {
-          console.warn('URL returned invalid data:', url.slice(-30), '| Length:', t?.length, '| Start:', t?.slice(0,50));
-        }
-      }catch(e){ console.warn('URL failed:', url.slice(-30), e.message); }
-    }
-    if(!text) throw new Error('All sheet URLs failed or returned invalid data');
-    const rows = parseCSV(text);
-    sheetData={};
-    rows.forEach(r=>{
-      if(!r[COL.SR]) return;
-      const sr = r[COL.SR].trim();
-      sheetData[sr] = r;
-      const padded = sr.padStart(3,'0');
-      if(padded !== sr) sheetData[padded] = r;
-    });
-    sheetOk=true;
-    console.log('Sheet sample row 1:', JSON.stringify(Object.entries(sheetData).slice(0,1)));
-    setSyncState('live','Rates live · '+new Date().toLocaleTimeString());
-    render();
-  }catch(e){ setSyncState('error','Sheet error · Default rates shown'); console.error('Sheet fetch error:',e); }
 }
 
 function setSyncState(s,t){
