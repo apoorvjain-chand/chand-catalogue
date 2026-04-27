@@ -961,8 +961,50 @@ body {
   gap: 8px;
   margin-top: 8px;
 }
+.card-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0;
+  margin-top: 8px;
+}
+.card-footer-section {
+  flex: 1;
+  text-align: center;
+  padding: 0 4px;
+}
+.card-footer-divider {
+  border-left: 1px solid var(--ink-06);
+}
 .card-footer-mrp { flex: 1; }
 .card-footer-moq { text-align: right; flex-shrink: 0; }
+.card-footer-offer {
+  flex: 1;
+  text-align: center;
+  position: relative;
+  padding: 0 6px;
+  border-left: 1px solid var(--ink-06);
+  border-right: 1px solid var(--ink-06);
+}
+.offer-blurred {
+  filter: blur(5px);
+  user-select: none;
+  pointer-events: none;
+  opacity: .7;
+}
+.offer-lock {
+  position: absolute;
+  inset: 0;
+  top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--maroon);
+  letter-spacing: .3px;
+  cursor: pointer;
+}
 .card-mrp-big {
   font-size: 18px;
   font-weight: 700;
@@ -2431,13 +2473,18 @@ function render(){
         ${classRef}
         ${socialProof}
         <div class="card-footer">
-          <div class="card-footer-mrp">
+          <div class="card-footer-section">
             <div class="moq-label">MRP</div>
             <div class="card-mrp-big">${pd.mrp ? `₹${Number(pd.mrp).toLocaleString('en-IN')}` : '—'}</div>
           </div>
-          <div class="card-footer-moq">
+          <div class="card-footer-section card-footer-divider">
             <div class="moq-label">Min. Order</div>
             <div class="moq-val">${pd.qty}</div>
+          </div>
+          <div class="card-footer-section card-footer-divider card-footer-offer">
+            <div class="moq-label">Discounted Rate</div>
+            <div class="card-mrp-big offer-blurred">${pd.mrp ? `₹${Math.round(Number(pd.mrp)*0.65).toLocaleString('en-IN')}` : '₹***'}</div>
+            <div class="offer-lock">🔓 Enquire</div>
           </div>
         </div>
         <button class="btn-doctor" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',event)">🔓 Enquire Now</button>
