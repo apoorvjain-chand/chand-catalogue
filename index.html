@@ -2430,7 +2430,11 @@ function render(){
     const ucs=extractUC(p.rog,p.ind,p.sr);
     const chipHtml=ucs.map(k=>{const t=ucStyle(k);return `<span class="chip" style="background:${t.bg};color:${t.tx}"><span class="chip-en">${t.en}</span>${t.hi?`<span class="chip-hi">${t.hi}</span>`:''}</span>`;}).join('');
     const pd=getProdData(p.sr,p.cat,p.n);
-    if(p.sr==='001') console.log('SR001 pd:', JSON.stringify(pd));
+    /* Discounted rate display */
+    const drNum = pd.discRate ? Number(pd.discRate) : (pd.mrp ? Math.round(Number(pd.mrp)*(1-(Number(pd.discPct)||35)/100)) : 0);
+    const drHtml = drNum > 0
+      ? '<span>\u20B9'+drNum.toLocaleString('en-IN').charAt(0)+'</span><span class="offer-blurred">'+drNum.toLocaleString('en-IN').slice(1)+'</span>'
+      : '<span class="offer-blurred" style="font-size:14px;">\u20B9\u2022\u2022\u2022</span>';
     const msg=encodeURIComponent(`Hello Chand Aushdhalaya, I am interested in bulk enquiry for: ${p.n} (${p.cat}). Please share pricing, MOQ and availability.`);
     const en=p.n.replace(/'/g,"\\'"), ec=p.cat.replace(/'/g,"\\'");
     const moqBtn=`<button class="btn-moq" onclick="openSheet('${p.sr}','${en}','${p.hi}','${ec}',event)">📦 MOQ</button>`;
@@ -2497,14 +2501,7 @@ function render(){
           </div>
           <div class="card-footer-section card-footer-divider card-footer-offer" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',null)">
             <div class="moq-label">Discounted Rate</div>
-            <div class="card-mrp-big">${(()=>{
-              const dr = pd.discRate ? Number(pd.discRate) : (pd.mrp ? Math.round(Number(pd.mrp)*(1-(Number(pd.discPct)||35)/100)) : null);
-              if(dr && dr > 0){
-                const s = '\u20B9'+dr.toLocaleString('en-IN');
-                return '<span>'+s.charAt(0)+'</span><span class="offer-blurred">'+s.slice(1)+'</span>';
-              }
-              return '<span class="offer-blurred" style="font-size:14px;">\u20B9\u2022\u2022\u2022</span>';
-            })()}</div>
+            <div class="card-mrp-big">${drHtml}</div>
             <div class="offer-lock">🔓 Enquire</div>
           </div>
         </div>
