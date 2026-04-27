@@ -894,7 +894,93 @@ body {
   margin-top: 2px;
   margin-bottom: 6px;
 }
-/* ── DOCTOR DISCOUNT MODAL ── */
+/* ═══════════════════════════════════════
+   MOBILE RESPONSIVE
+═══════════════════════════════════════ */
+@media (max-width: 480px) {
+  /* Masthead */
+  .masthead-inner { padding: 10px 12px 8px; }
+  .brand-en { font-size: 18px; }
+  .brand-hi { font-size: 11px; }
+  .tagline  { font-size: 8px; }
+  .trust-chips { gap: 4px; }
+  .tc { font-size: 8px; padding: 2px 6px; }
+
+  /* Stat strip */
+  .stat-strip { padding: 6px 12px; gap: 8px; overflow-x: auto; }
+  .stat-item  { font-size: 9px; white-space: nowrap; }
+
+  /* Sync bar */
+  .sync-bar { padding: 4px 12px; font-size: 9px; }
+
+  /* Category pills */
+  .cat-pills { padding: 8px 10px; gap: 5px; }
+  .pill { font-size: 9px; padding: 5px 8px; gap: 3px; white-space: nowrap; }
+
+  /* Grid — single column on very small screens */
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px 10px 100px;
+  }
+
+  /* Card */
+  .card-img { height: 64px; }
+  .cat-svg-icon svg { width: 44px; height: 44px; }
+  .card-body { padding: 8px; }
+  .card-name { font-size: 12px; }
+  .card-name-hi { font-size: 9px; }
+  .card-cat { font-size: 8px; padding: 2px 5px; }
+  .rog-preview { font-size: 9px; }
+  .chips { gap: 2px; margin-bottom: 5px; }
+  .chip { font-size: 8px; padding: 2px 5px; }
+  .chip-en { font-size: 8px; }
+  .chip-hi { font-size: 8px; }
+
+  /* Card footer - 3 sections */
+  .card-footer { gap: 0; margin-top: 6px; }
+  .card-footer-section { padding: 0 3px; }
+  .moq-label { font-size: 8px; }
+  .moq-val { font-size: 10px; }
+  .card-mrp-big { font-size: 13px; }
+  .offer-lock { font-size: 7px; }
+
+  /* Enquire Now button */
+  .btn-doctor { font-size: 9px; padding: 7px 5px; margin-top: 6px; }
+
+  /* MOQ sheet */
+  .sheet { border-radius: 16px 16px 0 0; }
+  .sheet-header { padding: 10px 16px 10px; }
+  .sheet-name { font-size: 15px; }
+  .sheet-rows { padding: 0 16px; }
+  .sheet-note { margin: 6px 16px 0; }
+  .sheet-uses { padding: 8px 16px 0; }
+  .sheet-close { margin: 10px 16px 0; width: calc(100% - 32px); }
+  .sheet-share-row { padding: 0 16px; }
+  .rate-card { margin: 10px 16px 0; }
+
+  /* Doctor modal */
+  .dr-box { padding: 20px 16px 28px; }
+  .dr-trust-row { gap: 4px; }
+  .dr-trust-chip { font-size: 8px; padding: 2px 6px; }
+
+  /* Back to top */
+  #back-top { bottom: 100px; width: 34px; height: 34px; font-size: 14px; }
+
+  /* Heat FAB */
+  #heat-fab { bottom: 60px; width: 36px; height: 36px; font-size: 16px; }
+
+  /* Category hero */
+  .cat-hero-inner { padding: 10px 12px; }
+  .cat-hero-en { font-size: 10px; }
+  .cat-hero-hi { font-size: 10px; }
+}
+
+@media (max-width: 360px) {
+  .grid { grid-template-columns: 1fr; }
+  .card-name { font-size: 13px; }
+  .card-footer { flex-wrap: wrap; }
+}
 .dr-overlay{display:none;position:fixed;inset:0;background:rgba(26,18,8,.6);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
 .dr-overlay.open{display:flex;}
 .dr-box{background:var(--white);border-radius:16px 16px 0 0;width:100%;max-width:480px;padding:24px 20px 32px;box-shadow:0 -8px 40px rgba(0,0,0,.15);}
