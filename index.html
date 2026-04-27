@@ -2428,6 +2428,7 @@ function render(){
     const ucs=extractUC(p.rog,p.ind,p.sr);
     const chipHtml=ucs.map(k=>{const t=ucStyle(k);return `<span class="chip" style="background:${t.bg};color:${t.tx}"><span class="chip-en">${t.en}</span>${t.hi?`<span class="chip-hi">${t.hi}</span>`:''}</span>`;}).join('');
     const pd=getProdData(p.sr,p.cat,p.n);
+    if(p.sr==='001') console.log('SR001 pd:', JSON.stringify(pd));
     const msg=encodeURIComponent(`Hello Chand Aushdhalaya, I am interested in bulk enquiry for: ${p.n} (${p.cat}). Please share pricing, MOQ and availability.`);
     const en=p.n.replace(/'/g,"\\'"), ec=p.cat.replace(/'/g,"\\'");
     const moqBtn=`<button class="btn-moq" onclick="openSheet('${p.sr}','${en}','${p.hi}','${ec}',event)">📦 MOQ</button>`;
