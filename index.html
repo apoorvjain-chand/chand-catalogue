@@ -1132,15 +1132,6 @@ body {
 .aud-btn.active { background:var(--maroon-bg);border-color:var(--maroon);color:var(--maroon); }
 .aud-label { font-size:9px;color:var(--ink-40);margin-left:auto;white-space:nowrap;align-self:center; }
 
-
-
-
-
-
-
-
-
-
 /* Hide reCAPTCHA badge */
 
 </style>
@@ -2223,7 +2214,6 @@ function parseCSV(text){
     semis  += countDelim(line,';');
   }
   const delim = tabs>=commas&&tabs>=semis ? '\t' : semis>commas ? ';' : ',';
-  console.log('Delimiter:', delim==='\t'?'TAB':delim, {tabs,commas,semis});
 
   /* Find data start — first row where col[0] is purely numeric */
   let dataStart = 0;
@@ -2232,7 +2222,6 @@ function parseCSV(text){
     const first = cols[0].replace(/\s/g,'').replace(/^0+/,'');
     if(first !== '' && /^\d+$/.test(first)){
       dataStart = i;
-      console.log('Data starts at row:', i+1, '| SR:', cols[0], '| Total cols:', cols.length);
       break;
     }
   }
@@ -2252,8 +2241,8 @@ function parseCSV(text){
     rows.push(row);
   }
 
-  console.log('Sheet connected:', rows.length, 'products');
-  if(rows[0]) console.log('Sample SR001:', JSON.stringify(rows[0]));
+  
+  if(rows[0])
   return rows;
 }
 
@@ -2269,8 +2258,7 @@ async function fetchSheet(){
       try{
         const res = await fetch(url);
         const t = await res.text();
-        console.log('Tried:', url.slice(-40), '| Length:', t.length, '| Start:', t.slice(0,60));
-        if(t && t.length > 200 && !t.includes('allowlist') && !t.startsWith('<') && !t.startsWith('{')){
+            if(t && t.length > 200 && !t.includes('allowlist') && !t.startsWith('<') && !t.startsWith('{')){
           text = t; break;
         }
       }catch(e){ console.warn('Failed:', e.message); }
@@ -2286,9 +2274,6 @@ async function fetchSheet(){
       if(padded !== sr) sheetData[padded] = r;
     });
     sheetOk=true;
-    console.log('sheetData keys sample:', Object.keys(sheetData).slice(0,5));
-    console.log('sheetData["001"]:', JSON.stringify(sheetData['001']));
-    console.log('Sheet loaded:', Object.keys(sheetData).length, 'rows | Sample:', JSON.stringify(Object.values(sheetData)[0]));
     setSyncState('live','Rates live · '+new Date().toLocaleTimeString());
     render();
   }catch(e){ setSyncState('error','Sheet error · Default rates shown'); console.error('Sheet fetch error:',e.message); }
@@ -2851,8 +2836,7 @@ async function loadHeatScores(){
         const s = (d.views||0) + (d.moqOpens||0)*3 + (d.waClicks||0)*5;
         if(s > 0) _heatScores[doc.id] = s;
       });
-      console.log('Heat scores loaded from Firebase:', Object.keys(_heatScores).length, 'products');
-      return;
+          return;
     } catch(e){ console.warn('Firebase heat load failed, using local:', e.message); }
   }
   /* Fallback to localStorage */
@@ -2952,7 +2936,6 @@ document.addEventListener('DOMContentLoaded', function(){
   var btn = document.getElementById('admin-login-btn');
   if(btn) btn.addEventListener('click', openAdminPanel);
 });
-
 
 /* ── Back to top button ── */
 const topBtn = document.createElement('button');
@@ -3192,7 +3175,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
 </style>
 <div id="admin-panel" style="display:none;position:fixed;inset:0;z-index:9999;overflow-y:auto;background:#F5F2EC;">
 
-
 <!-- Auth gate -->
 <div id="auth-gate">
   <div class="auth-box">
@@ -3384,8 +3366,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
   </div>
 
 </div>
-
-
 
 </div>
 <script>
