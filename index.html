@@ -2483,7 +2483,7 @@ function render(){
           </div>
           <div class="card-footer-section card-footer-divider card-footer-offer">
             <div class="moq-label">Discounted Rate</div>
-            <div class="card-mrp-big offer-blurred">${pd.mrp ? `₹${Math.round(Number(pd.mrp)*0.65).toLocaleString('en-IN')}` : '₹***'}</div>
+            <div class="card-mrp-big">${pd.mrp ? `<span>₹${Math.round(Number(pd.mrp)*0.65).toLocaleString('en-IN').charAt(0)}</span><span class="offer-blurred">${Math.round(Number(pd.mrp)*0.65).toLocaleString('en-IN').slice(1)}</span>` : '<span class="offer-blurred">₹***</span>'}</div>
             <div class="offer-lock">🔓 Enquire</div>
           </div>
         </div>
