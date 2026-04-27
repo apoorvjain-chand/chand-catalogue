@@ -2637,6 +2637,15 @@ async function fsSession(){
 })();
 
 /* ── Track product card view ── */
+/* ── Session browse tracker — products viewed this session ── */
+const _sessionBrowsed = [];
+function trackBrowse(sr, name, cat){
+  const idx = _sessionBrowsed.findIndex(p=>p.sr===sr);
+  if(idx > -1) _sessionBrowsed.splice(idx,1);
+  _sessionBrowsed.unshift({sr, name, cat, time: new Date().toLocaleTimeString()});
+  if(_sessionBrowsed.length > 10) _sessionBrowsed.pop();
+}
+
 function aView(sr, name, cat){
   const d = aLoad(), today = aToday();
   if(!d.products[sr]) d.products[sr] = {views:0, moqOpens:0, waClicks:0, name, cat};
@@ -2647,7 +2656,7 @@ function aView(sr, name, cat){
   aSave(d);
   fsIncProduct(sr, name, cat, 'views');
   fsIncDaily('views');
-
+  trackBrowse(sr, name, cat);
 }
 
 /* ── Track category click ── */
@@ -2976,9 +2985,16 @@ function drVerify(){
 
   /* WhatsApp verification message */
   const msg = encodeURIComponent(
-    `Hello Chand Aushdhalaya,\n\nI am interested in the Doctor Discount for:\n*${pname}*\n\nMy details:\nName: Dr. ${name}\nPincode: ${pin}\nWhatsApp: ${phone}\n\nPlease confirm my 35% doctor discount.`
+    `Hello Chand Aushdhalaya,\n\nI am interested in the Doctor Discount for:\n*${pname}*\n\nMy details:\nName: Dr. ${name}\nPincode: ${pin}\nWhatsApp: ${phone}${otherProducts ? `\n\nAlso checked: ${otherProducts}` : ''}\n\nPlease confirm my 35% doctor discount.`
   );
   window.open(`https://wa.me/916306777697?text=${msg}`, '_blank');
+
+  /* Other products browsed this session (excluding current) */
+  const otherProducts = _sessionBrowsed
+    .filter(p => p.sr !== sr)
+    .slice(0, 5)
+    .map(p => p.name)
+    .join(', ');
 
   /* Save lead to Firebase */
   if(window._fsReady && window._fsDb){
@@ -2992,6 +3008,7 @@ function drVerify(){
         sr,
         mrp: mrp||0,
         discountedPrice: disc||0,
+        otherProductsBrowsed: otherProducts || 'None',
         status: 'whatsapp_opened',
         timestamp: new Date().toISOString(),
       }).catch(()=>{});
@@ -3127,6 +3144,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
 .pt-cat{font-size:9px;color:var(--ink-60);margin-top:1px;}
 .pt-num{text-align:right;font-weight:500;color:var(--ink);}
 .pt-enq{text-align:right;font-weight:600;color:var(--green);}
+.dr-filter-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--ink-12);background:var(--white);font-family:inherit;font-size:10px;font-weight:500;color:var(--ink-60);cursor:pointer;transition:all .15s;}
+.dr-filter-btn.active{background:var(--maroon);color:#fff;border-color:var(--maroon);}
 .heat-pill{display:inline-block;padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700;text-align:right;}
 .score-bar{height:6px;background:var(--cream);border-radius:3px;overflow:hidden;margin-top:3px;min-width:60px;}
 .score-fill{height:100%;background:var(--green);border-radius:3px;}
@@ -3203,6 +3222,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     <div class="tab" onclick="switchTab('categories',this)">Categories</div>
     <div class="tab" onclick="switchTab('searches',this)">Searches</div>
     <div class="tab" onclick="switchTab('users',this)">👤 Users</div>
+    <div class="tab" onclick="switchTab('drleads',this)">🩺 Doctor Leads</div>
   </div>
 
   <!-- OVERVIEW TAB -->
@@ -3312,6 +3332,47 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     </div>
   </div>
 
+  <!-- DOCTOR LEADS TAB -->
+  <div class="tab-panel" id="tab-drleads">
+    <div class="sec">
+      <div class="sec-hdr">
+        <span class="sec-title">🩺 Doctor Leads</span>
+        <span class="sec-badge" id="dr-count">0 leads</span>
+        <button onclick="exportDrLeads()" style="margin-left:auto;background:var(--maroon);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;">⬇ Export Excel</button>
+      </div>
+      <!-- Filter tabs -->
+      <div style="display:flex;gap:6px;padding:10px 16px 0;flex-wrap:wrap;">
+        <button class="dr-filter-btn active" onclick="filterDrLeads('all',this)">All</button>
+        <button class="dr-filter-btn" onclick="filterDrLeads('whatsapp_opened',this)">📲 Verified</button>
+        <button class="dr-filter-btn" onclick="filterDrLeads('enquiry_placed',this)">✅ Enquired</button>
+        <button class="dr-filter-btn" onclick="filterDrLeads('dropped_off',this)">⚠️ Drop-offs</button>
+      </div>
+      <div class="sec-body" style="padding:0;overflow-x:auto;">
+        <table class="prod-table" id="dr-table">
+          <thead class="pt-head">
+            <tr>
+              <th>Name</th>
+              <th>Mobile</th>
+              <th>Pincode</th>
+              <th>Product</th>
+              <th>MRP</th>
+              <th>Dr. Price</th>
+              <th>Also Browsed</th>
+              <th>Status</th>
+              <th>Time</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="dr-tbody"></tbody>
+        </table>
+        <div class="empty hidden" id="dr-empty">
+          <div class="empty-icon">🩺</div>
+          <div class="empty-txt">No doctor leads yet. Leads appear when doctors verify on WhatsApp.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 
@@ -3374,32 +3435,30 @@ async function loadDashboard(){
     ]);
 
     /* Fetch ALL collections from Firestore in parallel */
-    const [prodSnap, dailySnap, catSnap, searchSnap, sessionSnap, userSnap] = await Promise.all([
+    const [prodSnap, dailySnap, catSnap, searchSnap, sessionSnap, userSnap, drSnap] = await Promise.all([
       withTimeout(getDocs(collection(db,'products'))),
       withTimeout(getDocs(collection(db,'daily'))),
       withTimeout(getDocs(collection(db,'categories'))),
       withTimeout(getDocs(collection(db,'searches'))),
       withTimeout(getDocs(collection(db,'sessions'))),
       withTimeout(getDocs(collection(db,'users'))),
+      withTimeout(getDocs(collection(db,'doctor_leads'))),
     ]);
 
-    /* Parse and normalize — Firestore numbers come back as plain JS numbers */
     const n = v => typeof v === 'number' ? v : (v && typeof v === 'object' && 'operand' in v ? v.operand : 0);
 
     const products={}, daily={}, categories={}, searches={}, sessions={}, users={};
+    const drLeads = [];
     prodSnap.forEach(doc=>{ const d=doc.data(); products[doc.id]={name:d.name||doc.id,cat:d.cat||'',views:n(d.views),moqOpens:n(d.moqOpens),waClicks:n(d.waClicks)}; });
     dailySnap.forEach(doc=>{ const d=doc.data(); daily[doc.id]={views:n(d.views),moq:n(d.moq),wa:n(d.wa),date:d.date||doc.id}; });
     catSnap.forEach(doc=>{ const d=doc.data(); categories[doc.id]={name:d.name||doc.id,clicks:n(d.clicks),scrollMs:n(d.scrollMs)}; });
     searchSnap.forEach(doc=>{ const d=doc.data(); searches[doc.id]={term:d.term||doc.id,count:n(d.count)}; });
     sessionSnap.forEach(doc=>{ const d=doc.data(); sessions[doc.id]={count:n(d.count),date:d.date||doc.id}; });
     userSnap.forEach(doc=>{ users[doc.id]=doc.data(); });
-
-    console.log('Firestore loaded — products:', Object.keys(products).length,
-      '| users:', Object.keys(users).length,
-      '| sample:', JSON.stringify(Object.values(products)[0]));
+    drSnap.forEach(doc=>{ drLeads.push({id:doc.id,...doc.data()}); });
 
     showLoading(false);
-    renderAll({ products, daily, categories, searches, sessions, users });
+    renderAll({ products, daily, categories, searches, sessions, users, drLeads });
 
   } catch(e){
     console.warn('Firestore failed:', e.message);
@@ -3435,6 +3494,86 @@ function renderAll(d){
   renderCategories(d);
   renderSearches(d);
   renderUsers(d);
+  renderDrLeads(d);
+}
+
+/* ── DOCTOR LEADS ── */
+let _allDrLeads = [];
+let _drFilter = 'all';
+
+function filterDrLeads(status, btn){
+  _drFilter = status;
+  document.querySelectorAll('.dr-filter-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderDrLeadsTable(_allDrLeads);
+}
+
+function renderDrLeads(d){
+  _allDrLeads = (d.drLeads || []).sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+  document.getElementById('dr-count').textContent = _allDrLeads.length + ' leads';
+  renderDrLeadsTable(_allDrLeads);
+}
+
+function renderDrLeadsTable(leads){
+  const filtered = _drFilter === 'all' ? leads : leads.filter(l=>l.status===_drFilter);
+  const tbody = document.getElementById('dr-tbody');
+  const empty = document.getElementById('dr-empty');
+
+  if(!filtered.length){
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const statusLabel = s => ({
+    'whatsapp_opened': '<span style="color:#1B5E82;font-weight:600;">📲 Verified</span>',
+    'enquiry_placed':  '<span style="color:#1E6B3A;font-weight:600;">✅ Enquired</span>',
+    'dropped_off':     '<span style="color:#B00020;font-weight:600;">⚠️ Drop-off</span>',
+  }[s] || s);
+
+  tbody.innerHTML = filtered.map(l=>{
+    const time = l.timestamp
+      ? new Date(l.timestamp).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+      : '—';
+    const phone = l.phone || '—';
+    const drPrice = l.discountedPrice ? `₹${Number(l.discountedPrice).toLocaleString('en-IN')}` : '—';
+    const mrp = l.mrp ? `₹${Number(l.mrp).toLocaleString('en-IN')}` : '—';
+    return `<tr class="pt-row">
+      <td><div class="pt-name">${l.name||'—'}</div></td>
+      <td>
+        <div style="font-size:11px;font-weight:600;">${phone}</div>
+        ${phone!=='—'?`<a href="tel:+91${phone}" style="font-size:9px;color:var(--maroon);">📞 Call</a>`:''}
+      </td>
+      <td style="font-size:11px;">${l.pincode||'—'}</td>
+      <td>
+        <div style="font-size:11px;font-weight:500;">${l.product||'—'}</div>
+        <div style="font-size:9px;color:var(--ink-40);">${l.category||''}</div>
+      </td>
+      <td style="font-size:11px;">${mrp}</td>
+      <td style="font-size:11px;color:#1E6B3A;font-weight:600;">${drPrice}</td>
+      <td style="font-size:10px;color:var(--ink-60);max-width:120px;">${l.otherProductsBrowsed||'—'}</td>
+      <td>${statusLabel(l.status)}</td>
+      <td style="font-size:10px;color:var(--ink-40);">${time}</td>
+      <td>
+        ${phone!=='—'?`<a href="https://wa.me/91${phone}?text=${encodeURIComponent(`Hi Dr., this is Chand Aushdhalaya. We noticed your interest in ${l.product||'our products'}. We'd like to offer you an exclusive doctor discount. May we assist you?`)}" target="_blank" style="background:#25D366;color:#fff;border:none;border-radius:5px;padding:4px 8px;font-size:9px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;">💬 WhatsApp</a>`:'—'}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function exportDrLeads(){
+  if(!_allDrLeads.length){ alert('No leads to export.'); return; }
+  const rows = [['Name','Mobile','Pincode','Product','Category','MRP','Doctor Price','Also Browsed','Status','Timestamp']];
+  _allDrLeads.forEach(l=>{
+    rows.push([l.name||'',l.phone||'',l.pincode||'',l.product||'',l.category||'',l.mrp||'',l.discountedPrice||'',l.otherProductsBrowsed||'',l.status||'',l.timestamp||'']);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Doctor_Leads_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
 }
 
 /* ── METRICS ── */
