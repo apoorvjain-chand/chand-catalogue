@@ -897,6 +897,92 @@ body {
   margin-top: 2px;
   margin-bottom: 6px;
 }
+/* ── DOCTOR DISCOUNT MODAL ── */
+.dr-overlay{display:none;position:fixed;inset:0;background:rgba(26,18,8,.6);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
+.dr-overlay.open{display:flex;}
+.dr-box{background:var(--white);border-radius:16px 16px 0 0;width:100%;max-width:480px;padding:24px 20px 32px;box-shadow:0 -8px 40px rgba(0,0,0,.15);}
+.dr-handle{width:36px;height:4px;background:var(--ink-12);border-radius:2px;margin:0 auto 18px;}
+.dr-title{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.dr-product{font-size:11px;color:var(--ink-40);margin-bottom:16px;}
+.dr-mrp-row{display:flex;align-items:center;gap:10px;background:var(--cream);border-radius:10px;padding:12px 14px;margin-bottom:16px;}
+.dr-mrp-label{font-size:10px;color:var(--ink-40);font-weight:500;flex-shrink:0;}
+.dr-mrp-val{font-size:18px;font-weight:700;color:var(--ink);font-family:var(--ff-display);}
+.dr-mrp-unit{font-size:10px;color:var(--ink-60);}
+.dr-step{display:none;}
+.dr-step.show{display:block;}
+.dr-label{font-size:11px;font-weight:500;color:var(--ink-60);margin-bottom:5px;margin-top:12px;}
+.dr-input{width:100%;padding:10px 12px;border:1px solid var(--ink-12);border-radius:8px;font-family:inherit;font-size:14px;color:var(--ink);outline:none;box-sizing:border-box;transition:border-color .2s;}
+.dr-input:focus{border-color:var(--maroon);}
+.dr-btn{width:100%;padding:12px;background:var(--maroon);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-top:14px;transition:background .2s;}
+.dr-btn:hover{background:var(--maroon-lt);}
+.dr-btn.wa{background:#25D366;}
+.dr-btn.wa:hover{background:#1da851;}
+.dr-discount-reveal{background:linear-gradient(135deg,#E6F4EC,#C8E8D4);border:1px solid #A8D5B5;border-radius:12px;padding:16px;text-align:center;margin-bottom:16px;}
+.dr-discount-pct{font-size:36px;font-weight:800;color:#1E6B3A;font-family:var(--ff-display);line-height:1;}
+.dr-discount-label{font-size:11px;color:#2E7D52;margin-top:2px;margin-bottom:10px;}
+.dr-price-row{display:flex;align-items:center;justify-content:center;gap:10px;}
+.dr-price-old{font-size:13px;color:var(--ink-40);text-decoration:line-through;}
+.dr-price-new{font-size:22px;font-weight:700;color:#1E6B3A;font-family:var(--ff-display);}
+.dr-price-unit{font-size:10px;color:#2E7D52;}
+.dr-close{width:100%;padding:9px;background:none;border:.5px solid var(--ink-12);border-radius:8px;font-family:inherit;font-size:12px;color:var(--ink-40);cursor:pointer;margin-top:8px;}
+.card-mrp{font-size:10px;color:var(--ink-60);margin-top:2px;line-height:1.4;}
+.card-mrp strong{font-weight:600;color:var(--ink);}
+.card-mrp-block {
+  margin: 8px 0 4px;
+  background: linear-gradient(135deg, #FFF8F0, #FFF0E6);
+  border: 1px solid #F0D0B0;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.card-mrp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.card-mrp-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--ink-40);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  flex-shrink: 0;
+}
+.card-mrp-price {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  font-family: var(--ff-display);
+  line-height: 1;
+}
+.card-mrp-unit { font-size: 9px; color: var(--ink-40); }
+.card-mrp-discount { font-size: 9px; color: #1E6B3A; font-weight: 500; margin-top: 3px; }
+
+/* Card footer — MRP left, MOQ right */
+.card-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+.card-footer-mrp { flex: 1; }
+.card-footer-moq { text-align: right; flex-shrink: 0; }
+.card-mrp-big {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  font-family: var(--ff-display);
+  line-height: 1.1;
+}
+.card-mrp-disc {
+  font-size: 9px;
+  color: #1E6B3A;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.btn-doctor{width:100%;padding:9px 8px;background:var(--maroon);border:none;color:#fff;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3;text-align:center;transition:all .15s;margin-top:8px;}
+.btn-doctor:hover{background:var(--maroon-lt);}
+
 .sh-stock-badge {
   display: inline-block;
   font-size: 9px;
@@ -1012,6 +1098,49 @@ body {
 </style>
 </head>
 <body>
+
+<!-- ═══════ DOCTOR DISCOUNT MODAL ═══════ -->
+<div class="dr-overlay" id="drOverlay" onclick="if(event.target===this)closeDrModal()">
+  <div class="dr-box">
+    <div class="dr-handle"></div>
+    <div class="dr-title">🩺 Doctor Discount</div>
+    <div class="dr-product" id="drProductName"></div>
+    <div class="dr-mrp-row">
+      <div class="dr-mrp-label">MRP</div>
+      <div>
+        <div class="dr-mrp-val" id="drMrpVal">—</div>
+        <div class="dr-mrp-unit" id="drMrpUnit"></div>
+      </div>
+    </div>
+    <!-- Step 1: Details -->
+    <div class="dr-step show" id="drStep1">
+      <div class="dr-label">Your Name</div>
+      <input class="dr-input" id="drName" type="text" placeholder="Dr. Full Name">
+      <div class="dr-label">WhatsApp Number</div>
+      <input class="dr-input" id="drPhone" type="tel" maxlength="10" placeholder="10-digit mobile" inputmode="numeric">
+      <div class="dr-label">Pincode</div>
+      <input class="dr-input" id="drPin" type="text" maxlength="6" placeholder="6-digit pincode" inputmode="numeric">
+      <div style="font-size:9px;color:var(--ink-40);margin-top:8px;line-height:1.5;">By continuing, you verify on WhatsApp. Our team confirms your doctor discount within 2 hours.</div>
+      <button class="dr-btn wa" onclick="drVerify()">📲 Verify on WhatsApp</button>
+      <button class="dr-close" onclick="closeDrModal()">Cancel</button>
+    </div>
+    <!-- Step 2: Discount revealed -->
+    <div class="dr-step" id="drStep2">
+      <div class="dr-discount-reveal">
+        <div class="dr-discount-pct">35% OFF</div>
+        <div class="dr-discount-label">Your exclusive doctor discount</div>
+        <div class="dr-price-row">
+          <div class="dr-price-old" id="drOldPrice"></div>
+          <div class="dr-price-new" id="drNewPrice"></div>
+          <div class="dr-price-unit" id="drPriceUnit"></div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--ink-60);text-align:center;margin-bottom:14px;line-height:1.5;">Our team will reach out to confirm your details and process your order.</div>
+      <button class="dr-btn" onclick="drEnquire()">📲 Place Enquiry on WhatsApp</button>
+      <button class="dr-close" onclick="drDropOff()">Maybe Later</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════ MASTHEAD ═══════ -->
 <header class="masthead">
@@ -1152,6 +1281,7 @@ const COL = {
   MOQ_UNIT:   'MOQ_UNIT',
   RATE:       'RATE',
   RATE_UNIT:  'RATE_UNIT',
+  MRP:        'MRP',
   PACK_SIZES: 'PACK_SIZES',
   STOCK:      'STOCK',
   IMAGE_URL:  'IMAGE_URL',
@@ -2076,7 +2206,7 @@ function parseCSV(text){
   /* Column order matches our template exactly:
      0:SR_NO  1:PRODUCT_NAME  2:CATEGORY  3:MOQ_QTY  4:MOQ_UNIT
      5:RATE   6:RATE_UNIT     7:PACK_SIZES 8:STOCK   9:IMAGE_URL  10:NOTES */
-  const KEYS = ['SR_NO','PRODUCT_NAME','CATEGORY','MOQ_QTY','MOQ_UNIT','RATE','RATE_UNIT','PACK_SIZES','STOCK','IMAGE_URL','NOTES'];
+  const KEYS = ['SR_NO','PRODUCT_NAME','CATEGORY','MOQ_QTY','MOQ_UNIT','RATE','RATE_UNIT','MRP','PACK_SIZES','STOCK','IMAGE_URL','NOTES'];
 
   const rows = [];
   for(let i=dataStart; i<allLines.length; i++){
@@ -2130,7 +2260,7 @@ function setSyncState(s,t){
 ═══════════════════════════════════ */
 function getCatConf(n){ return CATS.find(c=>c.n===n)||CATS[1]; }
 function getProdData(sr,cat,name){
-  if(PROD_OVERRIDES[name]) return {...PROD_OVERRIDES[name],rate:null,rateUnit:null,stock:'In Stock',imageUrl:''};
+  if(PROD_OVERRIDES[name]) return {...PROD_OVERRIDES[name],rate:null,rateUnit:null,mrp:null,stock:'In Stock',imageUrl:''};
   if(sheetOk&&sheetData[sr]){
     const r=sheetData[sr];
     return {
@@ -2141,12 +2271,13 @@ function getProdData(sr,cat,name){
       notes:    r[COL.NOTES]||'',
       rate:     r[COL.RATE]||null,
       rateUnit: r[COL.RATE_UNIT]||'',
+      mrp:      r[COL.MRP]||null,
       stock:    r[COL.STOCK]||'In Stock',
       imageUrl: r[COL.IMAGE_URL]||'',
     };
   }
   const def=CAT_MOQ[cat]||{qty:'1 Kg',pack:'As required',format:'Various',packSizes:'As required',notes:''};
-  return {...def,rate:null,rateUnit:null,stock:'In Stock',imageUrl:''};
+  return {...def,rate:null,rateUnit:null,mrp:null,stock:'In Stock',imageUrl:''};
 }
 
 /* Audience filter — just changes display emphasis, not filtering */
@@ -2308,15 +2439,17 @@ function render(){
         ${classRef}
         ${socialProof}
         <div class="card-footer">
-          <div>
+          <div class="card-footer-mrp">
+            <div class="moq-label">MRP</div>
+            <div class="card-mrp-big">${pd.mrp ? `₹${Number(pd.mrp).toLocaleString('en-IN')}` : '—'}</div>
+            ${pd.mrp ? `<div class="card-mrp-disc">35% off for Doctors</div>` : ''}
+          </div>
+          <div class="card-footer-moq">
             <div class="moq-label">Min. Order</div>
             <div class="moq-val">${pd.qty}</div>
           </div>
-          <div class="btn-row">
-            ${moqBtn}
-            ${enqBtn}
-          </div>
         </div>
+        <button class="btn-doctor" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',event)">🩺 Enquire for Doctor Discount</button>
       </div>
     </div>`;
   }).join('');
@@ -2640,21 +2773,39 @@ document.addEventListener('visibilitychange', ()=>{
 
 /* ── HEAT OVERLAY ── */
 let heatVisible = false;
+let _heatScores = {}; /* cached Firebase scores */
+
+async function loadHeatScores(){
+  /* Try Firebase first */
+  if(window._fsReady){
+    try{
+      const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      const snap = await getDocs(collection(window._fsDb, 'products'));
+      _heatScores = {};
+      snap.forEach(doc=>{
+        const d = doc.data();
+        const s = (d.views||0) + (d.moqOpens||0)*3 + (d.waClicks||0)*5;
+        if(s > 0) _heatScores[doc.id] = s;
+      });
+      console.log('Heat scores loaded from Firebase:', Object.keys(_heatScores).length, 'products');
+      return;
+    } catch(e){ console.warn('Firebase heat load failed, using local:', e.message); }
+  }
+  /* Fallback to localStorage */
+  const d = aLoad();
+  const prods = d.products || {};
+  _heatScores = {};
+  Object.entries(prods).forEach(([sr,p])=>{
+    const s = (p.views||0)+(p.moqOpens||0)*3+(p.waClicks||0)*5;
+    if(s > 0) _heatScores[sr] = s;
+  });
+}
 
 function buildHeatOverlay(){
-  const d       = aLoad();
-  const prods   = d.products || {};
-  const cats    = d.categories || {};
+  const scores   = _heatScores;
+  const maxScore = Math.max(1, ...Object.values(scores));
 
-  /* Score = views*1 + moqOpens*3 + waClicks*5 */
-  const score   = sr => {
-    const p = prods[sr];
-    if(!p) return 0;
-    return (p.views||0) + (p.moqOpens||0)*3 + (p.waClicks||0)*5;
-  };
-  const maxScore = Math.max(1, ...Object.keys(prods).map(score));
-
-  /* Heat color: green scale */
+  /* Heat color: green → orange based on intensity */
   const heatColor = (s, max) => {
     const pct = Math.min(s/max, 1);
     if(pct === 0) return null;
@@ -2667,15 +2818,13 @@ function buildHeatOverlay(){
   /* Overlay badges on each card */
   document.querySelectorAll('.card').forEach(card=>{
     const sr = card.dataset.sr;
-    const s  = score(sr);
+    const s  = scores[sr] || 0;
     const col= heatColor(s, maxScore);
 
-    /* Remove old badge */
     card.querySelector('.heat-badge')?.remove();
     card.querySelector('.heat-overlay-bg')?.remove();
 
     if(!heatVisible) return;
-    if(s === 0 && !heatVisible) return;
 
     /* Overlay tint */
     const tint = document.createElement('div');
@@ -2697,17 +2846,21 @@ function buildHeatOverlay(){
   });
 }
 
-
 /* FAB button */
 const fab = document.createElement('button');
 fab.id = 'heat-fab';
 fab.title = 'Toggle heat overlay';
 fab.innerHTML = '🔥';
 fab.style.cssText = `position:fixed;bottom:70px;right:16px;z-index:250;width:42px;height:42px;border-radius:50%;border:none;background:#2D5A27;color:#fff;font-size:18px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.2);transition:all .2s;display:flex;align-items:center;justify-content:center;`;
-fab.addEventListener('click', ()=>{
+fab.addEventListener('click', async ()=>{
   heatVisible = !heatVisible;
   fab.style.background = heatVisible ? '#C5A059' : '#2D5A27';
   fab.title = heatVisible ? 'Hide heat overlay' : 'Show heat overlay';
+  if(heatVisible){
+    fab.innerHTML = '⏳';
+    await loadHeatScores();
+    fab.innerHTML = '🔥';
+  }
   buildHeatOverlay();
 });
 document.body.appendChild(fab);
@@ -2718,6 +2871,9 @@ render = function(){
   _origRender2();
   if(heatVisible) setTimeout(buildHeatOverlay, 50);
 };
+
+/* Pre-load heat scores from Firebase on page load */
+window.addEventListener('firebase-ready', ()=>{ loadHeatScores(); }, {once:true});
 
 /* ── ADMIN PANEL OPENER — global scope ── */
 function openAdminPanel(){
@@ -2758,6 +2914,123 @@ function shareProduct(){
       window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
     });
   }
+}
+
+/* ═══════════════════════════════════
+   DOCTOR DISCOUNT FLOW
+═══════════════════════════════════ */
+let _drCurrent = {}; /* current product in doctor modal */
+
+function openDrModal(sr, name, nameHi, cat, event){
+  if(event) event.stopPropagation();
+  const pd = getProdData(sr, cat, name);
+  _drCurrent = {sr, name, nameHi, cat, pd};
+
+  document.getElementById('drProductName').textContent = name + (nameHi ? ' · ' + nameHi : '');
+  document.getElementById('drMrpVal').textContent = pd.mrp ? '₹' + Number(pd.mrp).toLocaleString('en-IN') : '—';
+  document.getElementById('drMrpUnit').textContent = pd.rateUnit || pd.pack || '';
+
+  /* Reset to step 1 */
+  document.getElementById('drStep1').classList.add('show');
+  document.getElementById('drStep2').classList.remove('show');
+  document.getElementById('drName').value = '';
+  document.getElementById('drPhone').value = '';
+  document.getElementById('drPin').value = '';
+
+  document.getElementById('drOverlay').classList.add('open');
+
+  /* Track popup open in Firebase */
+  fsIncProduct(sr, name, cat, 'drPopupOpens');
+}
+
+function closeDrModal(){
+  document.getElementById('drOverlay').classList.remove('open');
+}
+
+function drVerify(){
+  const name  = document.getElementById('drName').value.trim();
+  const phone = document.getElementById('drPhone').value.trim();
+  const pin   = document.getElementById('drPin').value.trim();
+
+  if(!name){ alert('Please enter your name.'); return; }
+  if(!/^\d{10}$/.test(phone)){ alert('Please enter a valid 10-digit WhatsApp number.'); return; }
+  if(!/^\d{6}$/.test(pin)){ alert('Please enter a valid 6-digit pincode.'); return; }
+
+  const {sr, name:pname, cat, pd} = _drCurrent;
+  const mrp  = pd.mrp ? Number(pd.mrp) : null;
+  const disc = mrp ? Math.round(mrp * 0.65) : null;
+
+  /* WhatsApp verification message */
+  const msg = encodeURIComponent(
+    `Hello Chand Aushdhalaya,\n\nI am interested in the Doctor Discount for:\n*${pname}*\n\nMy details:\nName: Dr. ${name}\nPincode: ${pin}\nWhatsApp: ${phone}\n\nPlease confirm my 35% doctor discount.`
+  );
+  window.open(`https://wa.me/916306777697?text=${msg}`, '_blank');
+
+  /* Save lead to Firebase */
+  if(window._fsReady && window._fsDb){
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({collection, addDoc})=>{
+      addDoc(collection(window._fsDb, 'doctor_leads'), {
+        name: 'Dr. ' + name,
+        phone,
+        pincode: pin,
+        product: pname,
+        category: cat,
+        sr,
+        mrp: mrp||0,
+        discountedPrice: disc||0,
+        status: 'whatsapp_opened',
+        timestamp: new Date().toISOString(),
+      }).catch(()=>{});
+    });
+  }
+
+  /* Show discount reveal */
+  if(mrp){
+    document.getElementById('drOldPrice').textContent = '₹' + mrp.toLocaleString('en-IN');
+    document.getElementById('drNewPrice').textContent = '₹' + disc.toLocaleString('en-IN');
+    document.getElementById('drPriceUnit').textContent = pd.rateUnit || pd.pack || 'per unit';
+  }
+  document.getElementById('drStep1').classList.remove('show');
+  document.getElementById('drStep2').classList.add('show');
+}
+
+function drEnquire(){
+  const {name:pname, cat, pd} = _drCurrent;
+  const mrp  = pd.mrp ? Number(pd.mrp) : null;
+  const disc = mrp ? Math.round(mrp * 0.65) : null;
+  const msg  = encodeURIComponent(
+    `Hello,\n\nI would like to place an enquiry for:\n*${pname}*\nDoctor Discount Price: ₹${disc ? disc.toLocaleString('en-IN') : 'TBD'}\n\nPlease confirm my order.`
+  );
+  window.open(`https://wa.me/916306777697?text=${msg}`, '_blank');
+  closeDrModal();
+
+  /* Update lead status */
+  if(window._fsReady && window._fsDb){
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({collection, addDoc})=>{
+      addDoc(collection(window._fsDb, 'doctor_leads'), {
+        product: pname, category: cat, status: 'enquiry_placed',
+        timestamp: new Date().toISOString(),
+      }).catch(()=>{});
+    });
+  }
+}
+
+function drDropOff(){
+  /* Track drop-off — team will follow up */
+  const {name:pname, cat, pd} = _drCurrent;
+  const drName  = document.getElementById('drName').value.trim();
+  const drPhone = document.getElementById('drPhone').value.trim();
+
+  if(window._fsReady && window._fsDb && drPhone){
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({collection, addDoc})=>{
+      addDoc(collection(window._fsDb, 'doctor_leads'), {
+        name: drName, phone: drPhone, product: pname, category: cat,
+        status: 'dropped_off', /* Team calls these with extra 10% */
+        timestamp: new Date().toISOString(),
+      }).catch(()=>{});
+    });
+  }
+  closeDrModal();
 }
 
 /* ═══════════════════════════════════
