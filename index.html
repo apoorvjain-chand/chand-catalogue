@@ -1302,18 +1302,20 @@ body {
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vROq8xuxWvvrYA3jB7FKi2BB0zdeWQtZwHDqPygsXfukO0p6lT7O6zBrMM8R5p08Q/pub?gid=225780839&single=true&output=csv';
 
 const COL = {
-  SR:         'SR_NO',
-  NAME:       'PRODUCT_NAME',
-  CAT:        'CATEGORY',
-  MOQ_QTY:    'MOQ_QTY',
-  MOQ_UNIT:   'MOQ_UNIT',
-  RATE:       'RATE',
-  RATE_UNIT:  'RATE_UNIT',
-  MRP:        'MRP',
-  PACK_SIZES: 'PACK_SIZES',
-  STOCK:      'STOCK',
-  IMAGE_URL:  'IMAGE_URL',
-  NOTES:      'NOTES',
+  SR:           'SR_NO',
+  NAME:         'PRODUCT_NAME',
+  CAT:          'CATEGORY',
+  MOQ_QTY:      'MOQ_QTY',
+  MOQ_UNIT:     'MOQ_UNIT',
+  RATE:         'RATE',
+  RATE_UNIT:    'RATE_UNIT',
+  MRP:          'MRP',
+  DISCOUNT_PCT: 'DISCOUNT_PCT',
+  DISC_RATE:    'DISC_RATE',
+  PACK_SIZES:   'PACK_SIZES',
+  STOCK:        'STOCK',
+  IMAGE_URL:    'IMAGE_URL',
+  NOTES:        'NOTES',
 };
 
 /* ═══════════════════════════════════
@@ -2234,7 +2236,7 @@ function parseCSV(text){
   /* Column order matches our template exactly:
      0:SR_NO  1:PRODUCT_NAME  2:CATEGORY  3:MOQ_QTY  4:MOQ_UNIT
      5:RATE   6:RATE_UNIT     7:PACK_SIZES 8:STOCK   9:IMAGE_URL  10:NOTES */
-  const KEYS = ['SR_NO','PRODUCT_NAME','CATEGORY','MOQ_QTY','MOQ_UNIT','RATE','RATE_UNIT','MRP','PACK_SIZES','STOCK','IMAGE_URL','NOTES'];
+  const KEYS = ['SR_NO','PRODUCT_NAME','CATEGORY','MOQ_QTY','MOQ_UNIT','RATE','RATE_UNIT','MRP','DISCOUNT_PCT','DISC_RATE','PACK_SIZES','STOCK','IMAGE_URL','NOTES'];
 
   const rows = [];
   for(let i=dataStart; i<allLines.length; i++){
@@ -2300,12 +2302,14 @@ function getProdData(sr,cat,name){
       rate:     r[COL.RATE]||null,
       rateUnit: r[COL.RATE_UNIT]||'',
       mrp:      r[COL.MRP]||null,
+      discPct:  r[COL.DISCOUNT_PCT]||'35',
+      discRate: r[COL.DISC_RATE]||null,
       stock:    r[COL.STOCK]||'In Stock',
       imageUrl: r[COL.IMAGE_URL]||'',
     };
   }
   const def=CAT_MOQ[cat]||{qty:'1 Kg',pack:'As required',format:'Various',packSizes:'As required',notes:''};
-  return {...def,rate:null,rateUnit:null,mrp:null,stock:'In Stock',imageUrl:''};
+  return {...def,rate:null,rateUnit:null,mrp:null,discPct:'35',discRate:null,stock:'In Stock',imageUrl:''};
 }
 
 /* Audience filter — just changes display emphasis, not filtering */
@@ -2477,7 +2481,7 @@ function render(){
           </div>
           <div class="card-footer-section card-footer-divider card-footer-offer">
             <div class="moq-label">Discounted Rate</div>
-            <div class="card-mrp-big">${pd.mrp ? `<span>₹${Math.round(Number(pd.mrp)*0.65).toLocaleString('en-IN').charAt(0)}</span><span class="offer-blurred">${Math.round(Number(pd.mrp)*0.65).toLocaleString('en-IN').slice(1)}</span>` : '<span class="offer-blurred">₹***</span>'}</div>
+            <div class="card-mrp-big">${pd.mrp ? (() => { const dr = pd.discRate ? Number(pd.discRate) : Math.round(Number(pd.mrp)*(1-(Number(pd.discPct)||35)/100)); const s = '₹'+dr.toLocaleString('en-IN'); return `<span>${s.charAt(0)}</span><span class="offer-blurred">${s.slice(1)}</span>`; })() : '<span class="offer-blurred">₹***</span>'}</div>
             <div class="offer-lock">🔓 Enquire</div>
           </div>
         </div>
