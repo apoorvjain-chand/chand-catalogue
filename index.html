@@ -2303,7 +2303,7 @@ function getProdData(sr,cat,name){
       rateUnit: r[COL.RATE_UNIT]||'',
       mrp:      r[COL.MRP]||null,
       discPct:  r[COL.DISCOUNT_PCT]||'35',
-      discRate: r[COL.DISC_RATE]||null,
+      discRate: (r[COL.DISC_RATE] && !String(r[COL.DISC_RATE]).startsWith('=')) ? r[COL.DISC_RATE] : null,
       stock:    r[COL.STOCK]||'In Stock',
       imageUrl: r[COL.IMAGE_URL]||'',
     };
@@ -2482,12 +2482,16 @@ function render(){
           <div class="card-footer-section card-footer-divider card-footer-offer" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',null)">
             <div class="moq-label">Discounted Rate</div>
             <div class="card-mrp-big">${(() => {
-              if(pd.mrp){
-                const dr = pd.discRate ? Number(pd.discRate) : Math.round(Number(pd.mrp)*(1-(Number(pd.discPct)||35)/100));
+              const mrp = pd.mrp ? Number(pd.mrp) : null;
+              const pct = Number(pd.discPct)||35;
+              const dr  = pd.discRate && !isNaN(Number(pd.discRate))
+                ? Number(pd.discRate)
+                : mrp ? Math.round(mrp*(1-pct/100)) : null;
+              if(dr){
                 const s = '₹'+dr.toLocaleString('en-IN');
                 return `<span>${s.charAt(0)}</span><span class="offer-blurred">${s.slice(1)}</span>`;
               }
-              return `<span class="offer-blurred" style="filter:blur(4px)">₹***</span>`;
+              return `<span style="color:var(--ink-40);filter:blur(3px);font-size:14px;">₹•••</span>`;
             })()}</div>
             <div class="offer-lock">🔓 Enquire</div>
           </div>
