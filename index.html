@@ -1299,7 +1299,7 @@ body {
 /* ═══════════════════════════════════
    CONFIG
 ═══════════════════════════════════ */
-const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vROq8xuxWvvrYA3jB7FKi2BB0zdeWQtZwHDqPygsXfukO0p6lT7O6zBrMM8R5p08Q/pub?gid=225780839&single=true&output=csv';
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBkj6ZYCTD15lRyBs5BWVRzVNrGoQhBZED1UeGQEB1SsrhfjIrsd-G15lSBWO7dg/pub?gid=2331857&single=true&output=csv';
 /* Fallback export URL formats to try */
 const SHEET_URLS = [
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vROq8xuxWvvrYA3jB7FKi2BB0zdeWQtZwHDqPygsXfukO0p6lT7O6zBrMM8R5p08Q/pub?gid=225780839&single=true&output=csv',
@@ -2266,8 +2266,8 @@ async function fetchSheet(){
   setSyncState('loading','Syncing rates…');
   try{
     const urls = [
-      'https://docs.google.com/spreadsheets/d/e/2PACX-1vROq8xuxWvvrYA3jB7FKi2BB0zdeWQtZwHDqPygsXfukO0p6lT7O6zBrMM8R5p08Q/pub?gid=225780839&single=true&output=csv',
-      'https://docs.google.com/spreadsheets/d/e/2PACX-1vROq8xuxWvvrYA3jB7FKi2BB0zdeWQtZwHDqPygsXfukO0p6lT7O6zBrMM8R5p08Q/pub?gid=0&single=true&output=csv',
+      'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBkj6ZYCTD15lRyBs5BWVRzVNrGoQhBZED1UeGQEB1SsrhfjIrsd-G15lSBWO7dg/pub?gid=2331857&single=true&output=csv',
+      'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBkj6ZYCTD15lRyBs5BWVRzVNrGoQhBZED1UeGQEB1SsrhfjIrsd-G15lSBWO7dg/pub?output=csv&gid=2331857',
     ];
     let text = null;
     for(const url of urls){
