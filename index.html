@@ -468,15 +468,18 @@ body {
 
 /* ── RELATED PRODUCTS ── */
 .related-row {
-  display: flex; flex-wrap: wrap; gap: 6px;
+  display: flex; flex-direction: row; gap: 6px;
   margin-top: 6px;
 }
 .related-btn {
   font-family: inherit; font-size: 10px;
-  font-weight: 500; padding: 5px 10px;
+  font-weight: 500; padding: 8px 6px;
   border-radius: 8px; border: 1px solid;
   background: var(--white); cursor: pointer;
-  transition: all .15s; text-align: left;
+  transition: all .15s; text-align: center;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+  flex: 1; min-width: 0;
   line-height: 1.3;
 }
 .related-btn:hover { opacity: .8; }
@@ -805,25 +808,18 @@ body {
   margin-bottom: 8px;
 }
 .related-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: flex; flex-direction: row; gap: 6px;
+  margin-top: 6px;
 }
 .related-btn {
   font-family: inherit;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid;
-  background: var(--white);
-  cursor: pointer;
-  transition: all .15s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  text-align: left;
-  width: 100%;
+  font-size: 10px; font-weight: 500;
+  padding: 8px 6px; border-radius: 8px;
+  border: 1px solid; background: var(--white);
+  cursor: pointer; transition: all .15s;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+  text-align: center; flex: 1; min-width: 0;
 }
 .related-btn:hover { opacity: .8; }
 
@@ -996,6 +992,9 @@ body {
 }
 .dr-unlock-hint{font-size:9px;color:var(--ink-40);text-align:center;margin-top:5px;font-style:italic;}
 
+.dr-trust-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;}
+.dr-trust-chip{font-size:9px;font-weight:600;color:#2D5A27;background:#E6F4EC;border:1px solid #A8D5B5;border-radius:20px;padding:3px 8px;letter-spacing:.2px;white-space:nowrap;}
+
 .sh-stock-badge {
   display: inline-block;
   font-size: 9px;
@@ -1112,47 +1111,29 @@ body {
 </head>
 <body>
 
-<!-- ═══════ DOCTOR DISCOUNT MODAL ═══════ -->
+<!-- ═══════ ENQUIRE RATE MODAL ═══════ -->
 <div class="dr-overlay" id="drOverlay" onclick="if(event.target===this)closeDrModal()">
   <div class="dr-box">
     <div class="dr-handle"></div>
-    <div class="dr-unlock-banner">✨ Discount % unlocks immediately post verification</div>
-    <div class="dr-title" style="margin-top:14px;">🩺 Doctor Discount</div>
-    <div class="dr-product" id="drProductName"></div>
-    <div class="dr-mrp-row">
-      <div class="dr-mrp-label">MRP</div>
-      <div>
-        <div class="dr-mrp-val" id="drMrpVal">—</div>
-        <div class="dr-mrp-unit" id="drMrpUnit"></div>
+    <div class="sheet-header" style="padding:0 0 12px;">
+      <div class="sheet-cat-badge" id="drCat"></div>
+      <div class="sheet-name" id="drProdName"></div>
+      <div class="sheet-name-hi" id="drProdNameHi"></div>
+      <div class="dr-trust-row">
+        <div class="dr-trust-chip">✅ GMP Certified</div>
+        <div class="dr-trust-chip">🏅 ISO Certified</div>
+        <div class="dr-trust-chip">🌿 AYUSH Licensed</div>
+        <div class="dr-trust-chip">🏛️ 97 Years of Trust</div>
       </div>
     </div>
-    <!-- Step 1: Details -->
-    <div class="dr-step show" id="drStep1">
-      <div class="dr-label">Your Name</div>
-      <input class="dr-input" id="drName" type="text" placeholder="Dr. Full Name">
-      <div class="dr-label">WhatsApp Number</div>
-      <input class="dr-input" id="drPhone" type="tel" maxlength="10" placeholder="10-digit mobile" inputmode="numeric">
-      <div class="dr-label">Pincode</div>
-      <input class="dr-input" id="drPin" type="text" maxlength="6" placeholder="6-digit pincode" inputmode="numeric">
-      <div style="font-size:9px;color:var(--ink-40);margin-top:8px;line-height:1.5;">By continuing, you verify on WhatsApp. Our team confirms your doctor discount within 2 hours.</div>
-      <button class="dr-btn wa" onclick="drVerify()">📲 Verify on WhatsApp</button>
-      <button class="dr-close" onclick="closeDrModal()">Cancel</button>
+    <div class="sheet-rows" id="drRows"></div>
+    <div class="sheet-note" id="drNote"></div>
+    <div class="sheet-uses" id="drUses"></div>
+    <div id="drRelated" style="display:none;margin-top:4px;"></div>
+    <div style="padding:10px 0 0;">
+      <button class="dr-btn wa" id="drWaBtn" onclick="drGetRateWA()" style="width:100%;padding:12px;background:#25D366;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;">📲 Get Rate on WhatsApp</button>
     </div>
-    <!-- Step 2: Discount revealed -->
-    <div class="dr-step" id="drStep2">
-      <div class="dr-discount-reveal">
-        <div class="dr-discount-pct">35% OFF</div>
-        <div class="dr-discount-label">Your exclusive doctor discount</div>
-        <div class="dr-price-row">
-          <div class="dr-price-old" id="drOldPrice"></div>
-          <div class="dr-price-new" id="drNewPrice"></div>
-          <div class="dr-price-unit" id="drPriceUnit"></div>
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--ink-60);text-align:center;margin-bottom:14px;line-height:1.5;">Our team will reach out to confirm your details and process your order.</div>
-      <button class="dr-btn" onclick="drEnquire()">📲 Place Enquiry on WhatsApp</button>
-      <button class="dr-close" onclick="drDropOff()">Maybe Later</button>
-    </div>
+    <button class="sheet-close" onclick="closeDrModal()">Close</button>
   </div>
 </div>
 
@@ -1265,9 +1246,6 @@ body {
     <div class="sheet-note" id="shNote"></div>
     <div class="sheet-uses" id="shUses"></div>
     <div id="shRelated" style="display:none;margin-top:12px;"></div>
-    <div class="sheet-share-row">
-      <button class="sheet-share-btn" onclick="shareProduct()">📤 Share This Product</button>
-    </div>
     <button class="sheet-close" onclick="document.getElementById('overlay').classList.remove('open')">Close</button>
   </div>
 </div>
@@ -2462,8 +2440,7 @@ function render(){
             <div class="moq-val">${pd.qty}</div>
           </div>
         </div>
-        <button class="btn-doctor" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',event)">🩺 Unlock Doctor Discount · Verify Details</button>
-        <div class="dr-unlock-hint">Discount % unlocks immediately post verification</div>
+        <button class="btn-doctor" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',event)">🔓 Enquire Now</button>
       </div>
     </div>`;
   }).join('');
@@ -2561,8 +2538,7 @@ function openSheet(sr,name,nameHi,cat,event){
             const ren=r.n.replace(/'/g,"\\'"), rhi=r.hi||'', rec=r.cat.replace(/'/g,"\\'");
             return `<button class="related-btn" onclick="closeSheet({target:document.getElementById('overlay')});setTimeout(()=>openSheet('${r.sr}','${ren}','${rhi}','${rec}',null),200)" style="border-color:${rc.c}20;color:${rc.c};">
               <span class="related-btn-icon">${CAT_ICONS[r.cat]||rc.e}</span>
-              <span style="flex:1;color:var(--ink);font-size:11px;">${r.n}</span>
-              <span style="font-size:9px;color:var(--ink-40);">${r.cat}</span>
+              <span style="color:var(--ink);font-size:10px;line-height:1.3;">${r.n}</span>
             </button>`;
           }).join('')}
         </div>
@@ -2946,23 +2922,64 @@ let _drCurrent = {}; /* current product in doctor modal */
 
 function openDrModal(sr, name, nameHi, cat, event){
   if(event) event.stopPropagation();
+  _currentSheetProduct = {sr, name, cat};
+  const cc = getCatConf(cat);
+  const p  = P.find(x=>x.sr===sr)||{};
   const pd = getProdData(sr, cat, name);
-  _drCurrent = {sr, name, nameHi, cat, pd};
 
-  document.getElementById('drProductName').textContent = name + (nameHi ? ' · ' + nameHi : '');
-  document.getElementById('drMrpVal').textContent = pd.mrp ? '₹' + Number(pd.mrp).toLocaleString('en-IN') : '—';
-  document.getElementById('drMrpUnit').textContent = pd.rateUnit || pd.pack || '';
+  /* Header */
+  document.getElementById('drCat').innerHTML = `<span class="sh-cat-icon">${CAT_ICONS[cat]||cc.e}</span> ${cat}`;
+  document.getElementById('drCat').style.cssText = `background:${cc.bg};color:${cc.c};`;
+  document.getElementById('drProdName').textContent   = name;
+  document.getElementById('drProdNameHi').textContent = nameHi||'';
 
-  /* Reset to step 1 */
-  document.getElementById('drStep1').classList.add('show');
-  document.getElementById('drStep2').classList.remove('show');
-  document.getElementById('drName').value = '';
-  document.getElementById('drPhone').value = '';
-  document.getElementById('drPin').value = '';
+  /* MOQ rows */
+  document.getElementById('drRows').innerHTML = [
+    ['Min. Order Qty',       pd.qty],
+    ['Pack / Unit Size',     pd.pack],
+    ['Supply Format',        pd.format],
+    ['Pack Sizes Available', pd.packSizes],
+  ].map(([l,v])=>`<div class="sheet-row"><span class="sr-label">${l}</span><span class="sr-value">${v}</span></div>`).join('');
+
+  /* Notes */
+  document.getElementById('drNote').textContent = pd.notes||'';
+
+  /* Therapeutic uses */
+  document.getElementById('drUses').innerHTML = p.rog||p.rog_hi ? `
+    <div class="sheet-uses-title">Therapeutic Uses</div>
+    <div class="uses-row" style="margin-bottom:8px">
+      <span class="uses-lang">EN</span>
+      <span class="uses-text">${p.rog||'—'}</span>
+    </div>
+    <div class="uses-row">
+      <span class="uses-lang">हि</span>
+      <span class="uses-text">${p.rog_hi||'—'}</span>
+    </div>` : '';
+
+  /* Related products */
+  const related = P.filter(x=>x.cat===cat && x.sr!==sr).slice(0,3);
+  const relEl = document.getElementById('drRelated');
+  if(relEl && related.length){
+    relEl.innerHTML = `
+      <div class="related-section">
+        <div class="related-title">Buyers Also Enquire About</div>
+        <div class="related-row">
+          ${related.map(r=>{
+            const rc=getCatConf(r.cat);
+            const ren=r.n.replace(/'/g,"\\'"), rhi=r.hi||'', rec=r.cat.replace(/'/g,"\\'");
+            return `<button class="related-btn" onclick="closeDrModal();setTimeout(()=>openDrModal('${r.sr}','${ren}','${rhi}','${rec}',null),200)" style="border-color:${rc.c}20;color:${rc.c};">
+              <span class="related-btn-icon">${CAT_ICONS[r.cat]||rc.e}</span>
+              <span style="color:var(--ink);font-size:10px;line-height:1.3;">${r.n}</span>
+            </button>`;
+          }).join('')}
+        </div>
+      </div>`;
+    relEl.style.display = 'block';
+  } else if(relEl){
+    relEl.style.display = 'none';
+  }
 
   document.getElementById('drOverlay').classList.add('open');
-
-  /* Track popup open in Firebase */
   fsIncProduct(sr, name, cat, 'drPopupOpens');
 }
 
@@ -2970,98 +2987,24 @@ function closeDrModal(){
   document.getElementById('drOverlay').classList.remove('open');
 }
 
-function drVerify(){
-  const name  = document.getElementById('drName').value.trim();
-  const phone = document.getElementById('drPhone').value.trim();
-  const pin   = document.getElementById('drPin').value.trim();
+function shareDrProduct(){
+  const {name, cat} = _currentSheetProduct || {};
+  const text = `Check out ${name||'this product'} on Chand Aushdhalaya B2B Catalogue:\nhttps://www.chand-aushdhalaya.com`;
+  if(navigator.share){
+    navigator.share({title:'Chand Aushdhalaya', text, url:'https://www.chand-aushdhalaya.com'}).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(text).then(()=>alert('Link copied!')).catch(()=>{
+      window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+    });
+  }
+}
 
-  if(!name){ alert('Please enter your name.'); return; }
-  if(!/^\d{10}$/.test(phone)){ alert('Please enter a valid 10-digit WhatsApp number.'); return; }
-  if(!/^\d{6}$/.test(pin)){ alert('Please enter a valid 6-digit pincode.'); return; }
-
-  const {sr, name:pname, cat, pd} = _drCurrent;
-  const mrp  = pd.mrp ? Number(pd.mrp) : null;
-  const disc = mrp ? Math.round(mrp * 0.65) : null;
-
-  /* WhatsApp verification message */
+function drGetRateWA(){
+  const {name, cat} = _currentSheetProduct || {};
   const msg = encodeURIComponent(
-    `Hello Chand Aushdhalaya,\n\nI am interested in the Doctor Discount for:\n*${pname}*\n\nMy details:\nName: Dr. ${name}\nPincode: ${pin}\nWhatsApp: ${phone}${otherProducts ? `\n\nAlso checked: ${otherProducts}` : ''}\n\nPlease confirm my 35% doctor discount.`
+    `Hello Chand Aushdhalaya,\n\nI would like to enquire about the rate for:\n*${name||''}*\n\nPlease share the B2B rate and MOQ details.`
   );
   window.open(`https://wa.me/916306777697?text=${msg}`, '_blank');
-
-  /* Other products browsed this session (excluding current) */
-  const otherProducts = _sessionBrowsed
-    .filter(p => p.sr !== sr)
-    .slice(0, 5)
-    .map(p => p.name)
-    .join(', ');
-
-  /* Save lead to Firebase */
-  if(window._fsReady && window._fsDb){
-    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({collection, addDoc})=>{
-      addDoc(collection(window._fsDb, 'doctor_leads'), {
-        name: 'Dr. ' + name,
-        phone,
-        pincode: pin,
-        product: pname,
-        category: cat,
-        sr,
-        mrp: mrp||0,
-        discountedPrice: disc||0,
-        otherProductsBrowsed: otherProducts || 'None',
-        status: 'whatsapp_opened',
-        timestamp: new Date().toISOString(),
-      }).catch(()=>{});
-    });
-  }
-
-  /* Show discount reveal */
-  if(mrp){
-    document.getElementById('drOldPrice').textContent = '₹' + mrp.toLocaleString('en-IN');
-    document.getElementById('drNewPrice').textContent = '₹' + disc.toLocaleString('en-IN');
-    document.getElementById('drPriceUnit').textContent = pd.rateUnit || pd.pack || 'per unit';
-  }
-  document.getElementById('drStep1').classList.remove('show');
-  document.getElementById('drStep2').classList.add('show');
-}
-
-function drEnquire(){
-  const {name:pname, cat, pd} = _drCurrent;
-  const mrp  = pd.mrp ? Number(pd.mrp) : null;
-  const disc = mrp ? Math.round(mrp * 0.65) : null;
-  const msg  = encodeURIComponent(
-    `Hello,\n\nI would like to place an enquiry for:\n*${pname}*\nDoctor Discount Price: ₹${disc ? disc.toLocaleString('en-IN') : 'TBD'}\n\nPlease confirm my order.`
-  );
-  window.open(`https://wa.me/916306777697?text=${msg}`, '_blank');
-  closeDrModal();
-
-  /* Update lead status */
-  if(window._fsReady && window._fsDb){
-    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({collection, addDoc})=>{
-      addDoc(collection(window._fsDb, 'doctor_leads'), {
-        product: pname, category: cat, status: 'enquiry_placed',
-        timestamp: new Date().toISOString(),
-      }).catch(()=>{});
-    });
-  }
-}
-
-function drDropOff(){
-  /* Track drop-off — team will follow up */
-  const {name:pname, cat, pd} = _drCurrent;
-  const drName  = document.getElementById('drName').value.trim();
-  const drPhone = document.getElementById('drPhone').value.trim();
-
-  if(window._fsReady && window._fsDb && drPhone){
-    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({collection, addDoc})=>{
-      addDoc(collection(window._fsDb, 'doctor_leads'), {
-        name: drName, phone: drPhone, product: pname, category: cat,
-        status: 'dropped_off', /* Team calls these with extra 10% */
-        timestamp: new Date().toISOString(),
-      }).catch(()=>{});
-    });
-  }
-  closeDrModal();
 }
 
 /* ═══════════════════════════════════
@@ -3353,7 +3296,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
             <tr>
               <th>Name</th>
               <th>Mobile</th>
+              <th>City</th>
               <th>Pincode</th>
+              <th>Speciality</th>
               <th>Product</th>
               <th>MRP</th>
               <th>Dr. Price</th>
