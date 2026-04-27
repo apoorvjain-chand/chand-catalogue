@@ -2193,10 +2193,9 @@ let sheetOk   = false;
    GOOGLE SHEET FETCH
 ═══════════════════════════════════ */
 function parseCSV(text){
-  /* Split into lines handling \r\n and \n */
   const allLines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
 
-  /* Split a single line by delimiter, respecting quoted fields */
+  /* Split respecting quoted fields */
   function splitLine(line, delim){
     const vals=[]; let cur='', inQ=false;
     for(let i=0; i<line.length; i++){
@@ -2209,33 +2208,35 @@ function parseCSV(text){
     return vals;
   }
 
-  /* Detect delimiter from the line with most separators */
-  let delim = ',';
-  let maxCols = 0;
-  for(const line of allLines.slice(0,5)){
-    const t = (line.match(/\t/g)||[]).length;
-    const c = (line.match(/,/g)||[]).length;
-    const s = (line.match(/;/g)||[]).length;
-    const max = Math.max(t,c,s);
-    if(max > maxCols){ maxCols=max; delim = t>=c&&t>=s?'\t':s>c?';':',';}
+  /* Count delimiters outside quotes */
+  function countDelim(line, d){
+    let n=0, inQ=false;
+    for(const ch of line){ if(ch==='"') inQ=!inQ; else if(ch===d&&!inQ) n++; }
+    return n;
   }
-  console.log('Delimiter:', delim==='\t'?'TAB':delim, 'maxCols:',maxCols);
 
-  /* Find the data start row — first row where col[0] is a pure number */
+  /* Detect delimiter from first 10 lines */
+  let tabs=0, commas=0, semis=0;
+  for(const line of allLines.slice(0,10)){
+    tabs   += countDelim(line,'\t');
+    commas += countDelim(line,',');
+    semis  += countDelim(line,';');
+  }
+  const delim = tabs>=commas&&tabs>=semis ? '\t' : semis>commas ? ';' : ',';
+  console.log('Delimiter:', delim==='\t'?'TAB':delim, {tabs,commas,semis});
+
+  /* Find data start — first row where col[0] is purely numeric */
   let dataStart = 0;
-  for(let i=0; i<Math.min(10, allLines.length); i++){
+  for(let i=0; i<Math.min(15, allLines.length); i++){
     const cols = splitLine(allLines[i], delim);
-    const first = cols[0].replace(/\D/g,'');
-    if(first !== '' && !isNaN(Number(first))){
+    const first = cols[0].replace(/\s/g,'').replace(/^0+/,'');
+    if(first !== '' && /^\d+$/.test(first)){
       dataStart = i;
-      console.log('Data starts at row:', i+1, '| First value:', cols[0], '| Cols:', cols.length);
+      console.log('Data starts at row:', i+1, '| SR:', cols[0], '| Total cols:', cols.length);
       break;
     }
   }
 
-  /* Column order matches our template exactly:
-     0:SR_NO  1:PRODUCT_NAME  2:CATEGORY  3:MOQ_QTY  4:MOQ_UNIT
-     5:RATE   6:RATE_UNIT     7:PACK_SIZES 8:STOCK   9:IMAGE_URL  10:NOTES */
   const KEYS = ['SR_NO','PRODUCT_NAME','CATEGORY','MOQ_QTY','MOQ_UNIT','RATE','RATE_UNIT','MRP','DISCOUNT_PCT','DISC_RATE','PACK_SIZES','STOCK','IMAGE_URL','NOTES'];
 
   const rows = [];
@@ -2243,15 +2244,16 @@ function parseCSV(text){
     const line = allLines[i];
     if(!line.trim()) continue;
     const cols = splitLine(line, delim);
-    if(!cols[0].replace(/\D/g,'')) continue; /* skip if first col not a number */
+    const firstClean = cols[0].replace(/\s/g,'').replace(/^0+/,'');
+    if(!firstClean || !/^\d+$/.test(firstClean)) continue;
     const row = {};
     KEYS.forEach((k,j)=>{ row[k] = (cols[j]||'').trim(); });
-    /* Pad SR_NO to 3 digits */
     if(row.SR_NO) row.SR_NO = row.SR_NO.replace(/\D/g,'').padStart(3,'0');
     rows.push(row);
   }
 
   console.log('Sheet connected:', rows.length, 'products');
+  if(rows[0]) console.log('Sample SR001:', JSON.stringify(rows[0]));
   return rows;
 }
 
