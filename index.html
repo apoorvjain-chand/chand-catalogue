@@ -2406,7 +2406,15 @@ function getProdData(sr,cat,name){
     base = {...def, rate:null, rateUnit:null, mrp:null, discPct:'35', discRate:null, stock:'In Stock', imageUrl:''};
   }
 
-  /* Apply PROD_OVERRIDES for display fields only — never override pricing */
+  /* Check Firebase pricing as fallback/override */
+  const fbPrice = _pricingData && _pricingData[sr];
+  if(fbPrice && fbPrice.mrp){
+    base.mrp      = fbPrice.mrp;
+    base.discPct  = fbPrice.discPct || '35';
+    base.discRate = fbPrice.discRate || null;
+  }
+
+  /* Apply PROD_OVERRIDES for display fields only */
   if(PROD_OVERRIDES[name]){
     const ov = PROD_OVERRIDES[name];
     base.qty      = ov.qty      || base.qty;
@@ -3026,7 +3034,10 @@ render = function(){
 };
 
 /* Pre-load heat scores from Firebase on page load */
-window.addEventListener('firebase-ready', ()=>{ loadHeatScores(); }, {once:true});
+window.addEventListener('firebase-ready', ()=>{
+  loadHeatScores();
+  loadPricingFromFirebase().then(()=>{ if(sheetOk) render(); });
+}, {once:true});
 
 /* ── ADMIN PANEL OPENER — global scope ── */
 function openAdminPanel(){
@@ -3318,6 +3329,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     <div class="tab" onclick="switchTab('searches',this)">Searches</div>
     <div class="tab" onclick="switchTab('users',this)">👤 Users</div>
     <div class="tab" onclick="switchTab('drleads',this)">🩺 Doctor Leads</div>
+    <div class="tab" onclick="switchTab('pricing',this)">💰 Pricing</div>
   </div>
 
   <!-- OVERVIEW TAB -->
@@ -3470,10 +3482,163 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     </div>
   </div>
 
+  <!-- PRICING TAB -->
+  <div class="tab-panel" id="tab-pricing">
+    <div class="sec">
+      <div class="sec-hdr">
+        <span class="sec-title">💰 Product Pricing</span>
+        <span class="sec-badge" id="pricing-count">0 products</span>
+        <button onclick="saveAllPricing()" style="margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;">💾 Save All to Firebase</button>
+      </div>
+      <div style="padding:8px 16px;font-size:10px;color:var(--ink-60);background:var(--cream);border-bottom:1px solid var(--ink-06);">
+        Set MRP and Discount% per product. Prices are stored securely in Firebase — not visible in the public sheet.
+      </div>
+      <!-- Category filter -->
+      <div style="padding:8px 16px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--ink-06);">
+        <select id="pricing-cat-filter" onchange="renderPricingTable()" style="font-family:inherit;font-size:10px;padding:4px 8px;border:1px solid var(--ink-12);border-radius:6px;">
+          <option value="">All Categories</option>
+          <option>Asav-Arishta</option><option>Churna</option><option>Guggul</option>
+          <option>Vati</option><option>Bhasma</option><option>Loha</option>
+          <option>Tail</option><option>Ras-Rasayan</option><option>Pishti-Parpati</option>
+          <option>Kadha</option><option>Miscellaneous</option>
+        </select>
+        <input id="pricing-search" placeholder="Search product..." oninput="renderPricingTable()"
+          style="font-family:inherit;font-size:10px;padding:4px 10px;border:1px solid var(--ink-12);border-radius:6px;flex:1;min-width:120px;">
+      </div>
+      <div class="sec-body" style="padding:0;overflow-x:auto;">
+        <table class="prod-table" id="pricing-table">
+          <thead class="pt-head">
+            <tr>
+              <th>SR</th>
+              <th>Product</th>
+              <th>Category</th>
+              <th>MRP ₹</th>
+              <th>Discount %</th>
+              <th>Disc. Rate ₹</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="pricing-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 </div>
 <script>
+/* ═══════════════════════════════════
+   PRICING TAB
+═══════════════════════════════════ */
+let _pricingData = {}; /* sr → {mrp, discPct} */
+let _pricingLoaded = false;
+
+async function loadPricingFromFirebase(){
+  if(!window._fsReady || !window._fsDb) return;
+  try{
+    const {collection, getDocs} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(collection(window._fsDb, 'pricing'));
+    snap.forEach(doc=>{ _pricingData[doc.id] = doc.data(); });
+    _pricingLoaded = true;
+  }catch(e){ console.error('Pricing load error:', e.message); }
+}
+
+function renderPricingTable(){
+  const catFilter = document.getElementById('pricing-cat-filter')?.value || '';
+  const search    = (document.getElementById('pricing-search')?.value || '').toLowerCase();
+
+  const filtered = P.filter(p=>{
+    if(catFilter && p.cat !== catFilter) return false;
+    if(search && !p.n.toLowerCase().includes(search) && !p.hi.includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('pricing-count').textContent = filtered.length + ' products';
+
+  document.getElementById('pricing-tbody').innerHTML = filtered.map(p=>{
+    const pd = _pricingData[p.sr] || {};
+    const mrp     = pd.mrp     || '';
+    const discPct = pd.discPct !== undefined ? pd.discPct : 35;
+    const discRate = mrp ? Math.round(Number(mrp)*(1-Number(discPct)/100)) : '';
+    const saved = pd.mrp ? '✅ Saved' : '⬜ Not set';
+
+    return `<tr class="pt-row">
+      <td style="font-size:10px;color:var(--ink-40);">${p.sr}</td>
+      <td>
+        <div class="pt-name" style="font-size:11px;">${p.n}</div>
+        <div style="font-size:9px;color:var(--ink-40);">${p.hi}</div>
+      </td>
+      <td style="font-size:10px;color:var(--ink-60);">${p.cat}</td>
+      <td>
+        <input type="number" id="mrp-${p.sr}" value="${mrp}" placeholder="e.g. 450"
+          oninput="updateDiscRate('${p.sr}')"
+          style="width:70px;padding:4px 6px;border:1px solid var(--ink-12);border-radius:5px;font-family:inherit;font-size:11px;">
+      </td>
+      <td>
+        <input type="number" id="pct-${p.sr}" value="${discPct}" min="0" max="100" placeholder="35"
+          oninput="updateDiscRate('${p.sr}')"
+          style="width:50px;padding:4px 6px;border:1px solid var(--ink-12);border-radius:5px;font-family:inherit;font-size:11px;">
+      </td>
+      <td id="dr-${p.sr}" style="font-size:12px;font-weight:600;color:var(--green);">
+        ${discRate ? '₹'+Number(discRate).toLocaleString('en-IN') : '—'}
+      </td>
+      <td style="font-size:10px;color:${pd.mrp?'#1E6B3A':'#888'};">${saved}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateDiscRate(sr){
+  const mrp     = Number(document.getElementById('mrp-'+sr)?.value)||0;
+  const discPct = Number(document.getElementById('pct-'+sr)?.value)||35;
+  const dr = mrp ? Math.round(mrp*(1-discPct/100)) : 0;
+  const el = document.getElementById('dr-'+sr);
+  if(el) el.textContent = dr ? '₹'+dr.toLocaleString('en-IN') : '—';
+}
+
+async function saveAllPricing(){
+  if(!window._fsReady || !window._fsDb){
+    alert('Firebase not connected.'); return;
+  }
+  const btn = event.target;
+  btn.textContent = '⏳ Saving...';
+  btn.disabled = true;
+
+  try{
+    const {collection, doc, setDoc} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const rows = document.querySelectorAll('#pricing-tbody tr');
+    let saved = 0;
+
+    for(const row of rows){
+      const sr  = row.querySelector('[id^="mrp-"]')?.id.replace('mrp-','');
+      const mrp = document.getElementById('mrp-'+sr)?.value.trim();
+      const pct = document.getElementById('pct-'+sr)?.value.trim();
+      if(!sr || !mrp) continue;
+
+      const data = {
+        mrp:     mrp,
+        discPct: pct||'35',
+        discRate: String(Math.round(Number(mrp)*(1-Number(pct||35)/100))),
+        updatedAt: new Date().toISOString(),
+      };
+      await setDoc(doc(collection(window._fsDb,'pricing'), sr), data, {merge:true});
+      _pricingData[sr] = data;
+      saved++;
+    }
+
+    btn.textContent = `✅ Saved ${saved} products`;
+    setTimeout(()=>{ btn.textContent='💾 Save All to Firebase'; btn.disabled=false; }, 3000);
+    renderPricingTable();
+  }catch(e){
+    btn.textContent = '❌ Error — try again';
+    btn.disabled = false;
+    console.error('Save pricing error:', e.message);
+  }
+}
+
+/* Load pricing when admin opens */
+const _origOpenAdmin = typeof openAdminPanel === 'function' ? openAdminPanel : null;
+
 /* ── ADMIN TRIGGER ── */
 document.addEventListener('DOMContentLoaded', function(){
   if(window.location.hash === '#admin') openAdminPanel();
@@ -3868,6 +4033,13 @@ function switchTab(name, el){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('tab-'+name).classList.add('active');
+  if(name === 'pricing'){
+    if(!_pricingLoaded){
+      loadPricingFromFirebase().then(()=>renderPricingTable());
+    } else {
+      renderPricingTable();
+    }
+  }
 }
 
 /* ── EXPORT TO EXCEL ── */
