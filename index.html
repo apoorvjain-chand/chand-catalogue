@@ -1642,7 +1642,7 @@ async function loadEnquiryCounts(){
 window.addEventListener('firebase-ready',()=>{ setTimeout(loadEnquiryCounts,2000); },{once:true});
 
 const CAT_MOQ = {
-  'Asav-Arishta':   {qty:'10 Bottles', pack:'500 ml / bottle', format:'Liquid / Fermented', packSizes:'500ml', notes:'Order in multiples of 10 bottles. Bulk rates available for 50+ bottles.'},
+  'Asav-Arishta':   {qty:'10 Units', pack:'500 ml / bottle', format:'Liquid / Fermented', packSizes:'500ml', notes:'Order in multiples of 10 units. Bulk rates available for 50+ units.'},
   'Churna':         {qty:'1 Kg', pack:'As required', format:'Powder / Churna', packSizes:'100g · 250g · 500g · 1Kg', notes:'Supplied in food-grade pouches. Custom packing available.'},
   'Kadha':          {qty:'1 Kg', pack:'As required', format:'Decoction / Kadha', packSizes:'500ml · 1L', notes:'Available loose or bottled format.'},
   'Vati':           {qty:'1 Kg', pack:'As required', format:'Tablet / Vati', packSizes:'Strip · Bulk', notes:'Bulk strip packing available on request.'},
@@ -1651,7 +1651,7 @@ const CAT_MOQ = {
   'Ras-Rasayan':    {qty:'1 Kg', pack:'As required', format:'Ras / Rasayan', packSizes:'As required', notes:'Premium mineral formulations in airtight amber containers.'},
   'Bhasma':         {qty:'1 Kg', pack:'As required', format:'Bhasma / Calx', packSizes:'10g · 25g · 100g · 1Kg', notes:'Fine powder — sealed glass or food-grade containers.'},
   'Loha':           {qty:'1 Kg', pack:'As required', format:'Loha / Iron compound', packSizes:'As required', notes:'Iron-based classical formulations in tablet or powder form.'},
-  'Tail':           {qty:'10 Bottles', pack:'500 ml / bottle', format:'Oil / Tail', packSizes:'500ml', notes:'Order in multiples of 10 bottles. Bulk rates available.'},
+  'Tail':           {qty:'10 Units', pack:'500 ml / bottle', format:'Oil / Tail', packSizes:'500ml', notes:'Order in multiples of 10 units. Bulk rates available.'},
   'Miscellaneous':  {qty:'1 Kg', pack:'As required', format:'Various', packSizes:'As required', notes:'MOQ 1 Kg for most products. Jawahar Mohra by box only.'},
 };
 const PROD_OVERRIDES = {
