@@ -2359,10 +2359,6 @@ async function fetchSheet(){
       sheetData[String(parseInt(sr))] = r;
     });
     sheetOk=true;
-    const keys = Object.keys(sheetData).filter(k=>parseInt(k)>=260&&parseInt(k)<=265);
-    console.warn('SR 260-265 keys in sheetData:', keys);
-    if(sheetData['263']) console.warn('SR263 data:', JSON.stringify(sheetData['263']));
-    else console.warn('SR263 NOT FOUND in sheetData');
     setSyncState('live','Rates live · '+new Date().toLocaleTimeString());
     render();
   }catch(e){ setSyncState('error','Sheet error · Default rates shown'); console.error('Sheet fetch error:',e.message); }
@@ -2379,31 +2375,48 @@ function setSyncState(s,t){
 ═══════════════════════════════════ */
 function getCatConf(n){ return CATS.find(c=>c.n===n)||CATS[1]; }
 function getProdData(sr,cat,name){
-  if(PROD_OVERRIDES[name]) return {...PROD_OVERRIDES[name],rate:null,rateUnit:null,mrp:null,stock:'In Stock',imageUrl:''};
+  /* Get sheet data first */
+  let sheetRow = null;
   if(sheetOk){
-    const r = sheetData[sr]
-           || sheetData[sr.padStart(3,'0')]
-           || sheetData[String(parseInt(sr,10))]
-           || sheetData[sr.replace(/^0+/,'')];
-    if(r){
-      return {
-        qty:      r[COL.MOQ_QTY]||'—',
-        pack:     r[COL.MOQ_UNIT]||'—',
-        format:   r[COL.CAT]||cat,
-        packSizes:r[COL.PACK_SIZES]||'—',
-        notes:    r[COL.NOTES]||'',
-        rate:     r[COL.RATE]||null,
-        rateUnit: r[COL.RATE_UNIT]||'',
-        mrp:      r[COL.MRP]||null,
-        discPct:  r[COL.DISCOUNT_PCT]||'35',
-        discRate: (r[COL.DISC_RATE] && !String(r[COL.DISC_RATE]).startsWith('=')) ? r[COL.DISC_RATE] : null,
-        stock:    r[COL.STOCK]||'In Stock',
-        imageUrl: r[COL.IMAGE_URL]||'',
-      };
-    }
+    sheetRow = sheetData[sr]
+            || sheetData[sr.padStart(3,'0')]
+            || sheetData[String(parseInt(sr,10))]
+            || sheetData[sr.replace(/^0+/,'')];
   }
-  const def=CAT_MOQ[cat]||{qty:'1 Kg',pack:'As required',format:'Various',packSizes:'As required',notes:''};
-  return {...def,rate:null,rateUnit:null,mrp:null,discPct:'35',discRate:null,stock:'In Stock',imageUrl:''};
+
+  /* Base data from sheet or defaults */
+  let base;
+  if(sheetRow){
+    base = {
+      qty:      sheetRow[COL.MOQ_QTY]||'—',
+      pack:     sheetRow[COL.MOQ_UNIT]||'—',
+      format:   sheetRow[COL.CAT]||cat,
+      packSizes:sheetRow[COL.PACK_SIZES]||'—',
+      notes:    sheetRow[COL.NOTES]||'',
+      rate:     sheetRow[COL.RATE]||null,
+      rateUnit: sheetRow[COL.RATE_UNIT]||'',
+      mrp:      sheetRow[COL.MRP]||null,
+      discPct:  sheetRow[COL.DISCOUNT_PCT]||'35',
+      discRate: (sheetRow[COL.DISC_RATE] && !String(sheetRow[COL.DISC_RATE]).startsWith('=')) ? sheetRow[COL.DISC_RATE] : null,
+      stock:    sheetRow[COL.STOCK]||'In Stock',
+      imageUrl: sheetRow[COL.IMAGE_URL]||'',
+    };
+  } else {
+    const def = CAT_MOQ[cat]||{qty:'1 Kg',pack:'As required',format:'Various',packSizes:'As required',notes:''};
+    base = {...def, rate:null, rateUnit:null, mrp:null, discPct:'35', discRate:null, stock:'In Stock', imageUrl:''};
+  }
+
+  /* Apply PROD_OVERRIDES for display fields only — never override pricing */
+  if(PROD_OVERRIDES[name]){
+    const ov = PROD_OVERRIDES[name];
+    base.qty      = ov.qty      || base.qty;
+    base.pack     = ov.pack     || base.pack;
+    base.format   = ov.format   || base.format;
+    base.packSizes= ov.packSizes|| base.packSizes;
+    base.notes    = ov.notes    || base.notes;
+  }
+
+  return base;
 }
 
 /* Audience filter — just changes display emphasis, not filtering */
