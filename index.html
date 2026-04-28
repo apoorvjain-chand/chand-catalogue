@@ -2352,10 +2352,11 @@ async function fetchSheet(){
     sheetData={};
     rows.forEach(r=>{
       if(!r[COL.SR]) return;
-      const sr = r[COL.SR].trim();
+      const sr = r[COL.SR].trim().replace(/\D/g,'');
+      if(!sr) return;
       sheetData[sr] = r;
-      const padded = sr.padStart(3,'0');
-      if(padded !== sr) sheetData[padded] = r;
+      sheetData[sr.padStart(3,'0')] = r;
+      sheetData[String(parseInt(sr))] = r;
     });
     sheetOk=true;
     setSyncState('live','Rates live · '+new Date().toLocaleTimeString());
@@ -2375,22 +2376,27 @@ function setSyncState(s,t){
 function getCatConf(n){ return CATS.find(c=>c.n===n)||CATS[1]; }
 function getProdData(sr,cat,name){
   if(PROD_OVERRIDES[name]) return {...PROD_OVERRIDES[name],rate:null,rateUnit:null,mrp:null,stock:'In Stock',imageUrl:''};
-  if(sheetOk&&sheetData[sr]){
-    const r=sheetData[sr];
-    return {
-      qty:      r[COL.MOQ_QTY]||'—',
-      pack:     r[COL.MOQ_UNIT]||'—',
-      format:   r[COL.CAT]||cat,
-      packSizes:r[COL.PACK_SIZES]||'—',
-      notes:    r[COL.NOTES]||'',
-      rate:     r[COL.RATE]||null,
-      rateUnit: r[COL.RATE_UNIT]||'',
-      mrp:      r[COL.MRP]||null,
-      discPct:  r[COL.DISCOUNT_PCT]||'35',
-      discRate: (r[COL.DISC_RATE] && !String(r[COL.DISC_RATE]).startsWith('=')) ? r[COL.DISC_RATE] : null,
-      stock:    r[COL.STOCK]||'In Stock',
-      imageUrl: r[COL.IMAGE_URL]||'',
-    };
+  if(sheetOk){
+    const r = sheetData[sr]
+           || sheetData[sr.padStart(3,'0')]
+           || sheetData[String(parseInt(sr,10))]
+           || sheetData[sr.replace(/^0+/,'')];
+    if(r){
+      return {
+        qty:      r[COL.MOQ_QTY]||'—',
+        pack:     r[COL.MOQ_UNIT]||'—',
+        format:   r[COL.CAT]||cat,
+        packSizes:r[COL.PACK_SIZES]||'—',
+        notes:    r[COL.NOTES]||'',
+        rate:     r[COL.RATE]||null,
+        rateUnit: r[COL.RATE_UNIT]||'',
+        mrp:      r[COL.MRP]||null,
+        discPct:  r[COL.DISCOUNT_PCT]||'35',
+        discRate: (r[COL.DISC_RATE] && !String(r[COL.DISC_RATE]).startsWith('=')) ? r[COL.DISC_RATE] : null,
+        stock:    r[COL.STOCK]||'In Stock',
+        imageUrl: r[COL.IMAGE_URL]||'',
+      };
+    }
   }
   const def=CAT_MOQ[cat]||{qty:'1 Kg',pack:'As required',format:'Various',packSizes:'As required',notes:''};
   return {...def,rate:null,rateUnit:null,mrp:null,discPct:'35',discRate:null,stock:'In Stock',imageUrl:''};
