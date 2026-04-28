@@ -2359,6 +2359,10 @@ async function fetchSheet(){
       sheetData[String(parseInt(sr))] = r;
     });
     sheetOk=true;
+    const keys = Object.keys(sheetData).filter(k=>parseInt(k)>=260&&parseInt(k)<=265);
+    console.warn('SR 260-265 keys in sheetData:', keys);
+    if(sheetData['263']) console.warn('SR263 data:', JSON.stringify(sheetData['263']));
+    else console.warn('SR263 NOT FOUND in sheetData');
     setSyncState('live','Rates live · '+new Date().toLocaleTimeString());
     render();
   }catch(e){ setSyncState('error','Sheet error · Default rates shown'); console.error('Sheet fetch error:',e.message); }
