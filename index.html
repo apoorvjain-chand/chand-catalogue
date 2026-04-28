@@ -536,7 +536,7 @@ body {
   color: var(--ink);
 }
 .card-name-hi {
-  font-size: 10px;
+  font-size: 12px;
   font-family: 'Noto Sans Devanagari', sans-serif;
   color: var(--ink-40);
   margin-bottom: 7px;
@@ -1292,15 +1292,6 @@ body {
     <button id="admin-login-btn" style="margin-left:auto;background:rgba(197,160,89,.15);border:.5px solid rgba(197,160,89,.5);border-radius:6px;padding:4px 10px;font-family:inherit;font-size:10px;font-weight:500;color:#C5A059;cursor:pointer;letter-spacing:.3px;">⚙️ Admin</button>
   </div>
 </header>
-
-<!-- ═══════ AUDIENCE SELECTOR ═══════ -->
-<div class="audience-bar">
-  <span class="aud-label">I am a:</span>
-  <button class="aud-btn active" data-aud="all" onclick="setAud('all',this)">🌿 All</button>
-  <button class="aud-btn" data-aud="doctor" onclick="setAud('doctor',this)">👨‍⚕️ Doctor</button>
-  <button class="aud-btn" data-aud="pharmacy" onclick="setAud('pharmacy',this)">🏪 Pharmacy</button>
-  <button class="aud-btn" data-aud="marketing" onclick="setAud('marketing',this)">📦 Marketing Co.</button>
-</div>
 
 <!-- ═══════ CONTROLS ═══════ -->
 <div class="controls">
@@ -2443,7 +2434,6 @@ function setCat(c){
         <div class="cat-hero-name" style="color:${cc.c}"><span class="hero-cat-icon">${CAT_ICONS[c]||cc.e}</span> ${c}</div>
         <div class="cat-hero-en">${desc.en}</div>
         <div class="cat-hero-hi">${desc.hi}</div>
-        <div class="cat-hero-ref">📜 ${desc.ref}</div>
       </div>`;
     heroEl.style.display = 'block';
   } else if(heroEl){
