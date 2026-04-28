@@ -1038,6 +1038,7 @@ body {
   text-align: center;
   padding: 0 3px;
   min-width: 0;
+  overflow: hidden;
 }
 .card-footer-divider {
   border-left: 1px solid var(--ink-06);
@@ -1050,6 +1051,8 @@ body {
   position: relative;
   padding: 0 3px;
   min-width: 0;
+  overflow: hidden;
+  cursor: pointer;
 }
 .moq-label {
   font-size: 8px;
@@ -1078,6 +1081,9 @@ body {
   font-family: var(--ff-display);
   line-height: 1.1;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
 }
 .offer-blurred {
   filter: blur(4px);
@@ -2570,11 +2576,11 @@ function render(){
           </div>
           <div class="card-footer-section card-footer-divider">
             <div class="moq-label">Min. Order</div>
-            <div class="card-mrp-big">${pd.qty}</div>
+            <div class="card-mrp-big" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pd.qty}</div>
           </div>
-          <div class="card-footer-section card-footer-divider card-footer-offer" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',null)">
-            <div class="moq-label">Disc. Rate</div>
-            <div class="card-mrp-big">${drHtml}</div>
+          <div class="card-footer-section card-footer-divider card-footer-offer" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',null)" style="overflow:hidden;">
+            <div class="moq-label" style="font-size:6.5px;">Discounted Rate</div>
+            <div class="card-mrp-big" style="overflow:hidden;">${drHtml}</div>
           </div>
         </div>
         <button class="btn-doctor" onclick="openDrModal('${p.sr}','${en}','${p.hi}','${ec}',event)">🔓 Enquire Now</button>
