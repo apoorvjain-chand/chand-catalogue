@@ -1155,15 +1155,65 @@ body {
 /* ═══════════════════════════════════
    PHARMACY CATALOGUE CARD
 ═══════════════════════════════════ */
-.ph-card-footer{margin-top:8px;border-top:1px solid var(--ink-06);padding-top:7px;}
-.ph-slab-title{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#1B5E82;margin-bottom:5px;}
-.ph-slab-row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;}
-.ph-slab-qty{font-size:9px;color:var(--ink);font-weight:500;}
-.ph-slab-rate{font-size:9px;color:#1B5E82;font-weight:700;}
-.ph-moq{font-size:9px;color:var(--ink-40);margin-bottom:5px;}
-.ph-moq span{font-weight:600;color:var(--ink);}
-.ph-enquire-btn{width:100%;margin-top:8px;padding:9px;background:#1B5E82;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s;}
-.ph-enquire-btn:hover{background:#1565C0;}
+.ph-slab-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ph-slab-col {
+  background: var(--cream);
+  border: 1px solid var(--ink-12);
+  border-radius: 6px;
+  padding: 5px 4px;
+  text-align: center;
+}
+.ph-slab-mid {
+  background: #F0F7EE;
+  border-color: #A8D5B5;
+}
+.ph-slab-range {
+  font-size: 8px;
+  color: var(--ink-60);
+  font-weight: 600;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+.ph-slab-val {
+  font-size: 9px;
+  color: var(--green);
+  font-weight: 700;
+}
+.ph-trust-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.ph-trust-chip {
+  font-size: 8px;
+  font-weight: 500;
+  color: #2D5A27;
+  background: #E6F4EC;
+  border: 1px solid #A8D5B5;
+  border-radius: 10px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.ph-enquire-btn {
+  width: 100%;
+  padding: 9px;
+  background: var(--green);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+}
+.ph-enquire-btn:hover { background: #3a7a33; }
 
 .sh-stock-badge {
   display: inline-block;
@@ -1710,7 +1760,7 @@ const CAT_MOQ = {
   'Ras-Rasayan':    {qty:'1 Kg', pack:'As required', format:'Ras / Rasayan', packSizes:'As required', notes:'Premium mineral formulations in airtight amber containers.'},
   'Bhasma':         {qty:'1 Kg', pack:'As required', format:'Bhasma / Calx', packSizes:'10g · 25g · 100g · 1Kg', notes:'Fine powder — sealed glass or food-grade containers.'},
   'Loha':           {qty:'1 Kg', pack:'As required', format:'Loha / Iron compound', packSizes:'As required', notes:'Iron-based classical formulations in tablet or powder form.'},
-  'Tail':           {qty:'10 Units', pack:'500 ml / bottle', format:'Oil / Tail', packSizes:'500ml', notes:'Order in multiples of 10 units. Bulk rates available.'},
+  'Tail':           {qty:'1 Ltr', pack:'1 Ltr / bottle', format:'Oil / Tail', packSizes:'1 Ltr', notes:'Order in multiples of 1 Ltr. Bulk rates available.'},
   'Miscellaneous':  {qty:'1 Kg', pack:'As required', format:'Various', packSizes:'As required', notes:'MOQ 1 Kg for most products. Jawahar Mohra by box only.'},
 };
 const PROD_OVERRIDES = {
@@ -3325,11 +3375,13 @@ function updateUserBadge(){
 }
 
 function buildPharmacyCard(p, pd, en, ec){
+  /* Hide Asav-Arishta from pharmacy catalogue */
+  if(p.cat === 'Asav-Arishta') return '';
+
   const cc = getCatConf(p.cat);
   const isBs = BEST_SELLERS.includes(p.n);
-  const stockBadge = pd.stock==='Out of Stock'
-    ? '<div class="stock-badge out">OUT OF STOCK</div>'
-    : isBs ? '<div class="stock-badge in bestseller-badge">⭐ BEST SELLER</div>' : '';
+  const isOut = pd.stock === 'Out of Stock';
+  const isTail = p.cat === 'Tail';
 
   const catIcon = CAT_ICONS[p.cat]
     ? `<div class="card-img-icon">${CAT_ICONS[p.cat]}</div>`
@@ -3339,10 +3391,21 @@ function buildPharmacyCard(p, pd, en, ec){
     ? `<img src="${pd.imageUrl}" alt="${en}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r-img);" onerror="this.style.display='none'">`
     : catIcon;
 
-  return `<div class="card" data-sr="${p.sr}" data-cat="${ec}" style="position:relative;cursor:pointer;" onclick="openSheet('${p.sr}','${en}','${p.hi||''}','${ec}',event)">
-    <div class="card-band" style="background:${cc.bg}"></div>
-    <div class="card-img" style="background:${cc.bg}20">
-      ${stockBadge}
+  const topBadge = isOut
+    ? '<div class="stock-badge out" style="top:6px;left:6px;position:absolute;z-index:5;">OUT OF STOCK</div>'
+    : isBs
+    ? '<div class="stock-badge in bestseller-badge" style="top:6px;left:6px;position:absolute;z-index:5;">⭐ BEST SELLER</div>'
+    : '';
+
+  /* Slab units based on category */
+  const unit = isTail ? 'Ltr' : 'Kg';
+  const slab1 = `1–5 ${unit}`;
+  const slab2 = `6 ${unit}+`;
+
+  return `<div class="card ph-b2b-card" data-sr="${p.sr}" data-cat="${ec}" style="position:relative;">
+    <div class="card-band"></div>
+    <div class="card-img" style="background:${cc.bg}20;position:relative;">
+      ${topBadge}
       ${imgHtml}
     </div>
     <div class="card-body">
@@ -3353,25 +3416,29 @@ function buildPharmacyCard(p, pd, en, ec){
       <div class="card-name">${p.n}</div>
       ${p.hi ? `<div class="card-name-hi">${p.hi}</div>` : ''}
       ${p.rog ? `<div class="rog-preview">${p.rog.length>80?p.rog.slice(0,77)+'…':p.rog}</div>` : ''}
-      <div class="ph-card-footer">
-        <div class="ph-moq">Min. Order: <span>${pd.qty}</span></div>
-        <div class="ph-slab-title">📦 Slab Pricing</div>
-        <div class="ph-slab-row">
-          <span class="ph-slab-qty">1 – 5 Kg</span>
-          <span class="ph-slab-rate">On Request</span>
-        </div>
-        <div class="ph-slab-row">
-          <span class="ph-slab-qty">6 – 10 Kg</span>
-          <span class="ph-slab-rate">On Request</span>
-        </div>
-        <div class="ph-slab-row">
-          <span class="ph-slab-qty">11 Kg +</span>
-          <span class="ph-slab-rate">On Request</span>
-        </div>
-        <button class="ph-enquire-btn" onclick="event.stopPropagation();phEnquire('${en}','${ec}')">
-          📲 Get Rates on WhatsApp
-        </button>
+      <div style="border-top:1px solid var(--ink-06);margin:8px 0 7px;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+        <div style="font-size:9px;color:var(--ink-60);">Min. Order: <strong style="color:var(--ink);">${pd.qty}</strong></div>
+        <div style="font-size:8px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.3px;">📦 Slab Pricing</div>
       </div>
+      <div class="ph-slab-grid">
+        <div class="ph-slab-col">
+          <div class="ph-slab-range">${slab1}</div>
+          <div class="ph-slab-val">On Request</div>
+        </div>
+        <div class="ph-slab-col ph-slab-mid">
+          <div class="ph-slab-range">${slab2}</div>
+          <div class="ph-slab-val">On Request</div>
+        </div>
+      </div>
+      <div class="ph-trust-row">
+        <span class="ph-trust-chip">⚡ Fast Dispatch</span>
+        <span class="ph-trust-chip">✅ GMP Certified</span>
+        <span class="ph-trust-chip">🏅 ISO Accredited</span>
+      </div>
+      <button class="ph-enquire-btn" onclick="phEnquire('${en}','${ec}')">
+        📲 Get Bulk Rate on WhatsApp
+      </button>
     </div>
   </div>`;
 }
