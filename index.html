@@ -1185,8 +1185,8 @@ body {
   font-weight: 700;
 }
 .ph-trust-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 4px;
   margin-bottom: 8px;
 }
@@ -1197,8 +1197,13 @@ body {
   background: #E6F4EC;
   border: 1px solid #A8D5B5;
   border-radius: 10px;
-  padding: 2px 7px;
+  padding: 4px 6px;
   white-space: nowrap;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
 }
 .ph-forms-row {
   display: flex;
