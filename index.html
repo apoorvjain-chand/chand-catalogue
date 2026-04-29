@@ -1231,6 +1231,59 @@ body {
   font-weight: 500;
   color: var(--ink);
 }
+.mkt-pack-sizes {
+  margin-bottom: 7px;
+}
+.mkt-pack-label {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: var(--ink-60);
+  display: block;
+  margin-bottom: 4px;
+}
+.mkt-pack-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.mkt-pack-tag {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--green);
+  background: #F0F7EE;
+  border: 1px solid #A8D5B5;
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.ph-moq-box {
+  background: linear-gradient(135deg, #C5A059, #D4AF6A);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+.ph-moq-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -.1px;
+  text-shadow: 0 1px 2px rgba(0,0,0,.15);
+  text-align: center;
+}
+.ph-moq-label {
+  font-size: 9px;
+  color: rgba(255,255,255,.85);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
 .ph-enquire-btn {
   width: 100%;
   padding: 9px;
@@ -1361,16 +1414,33 @@ body {
     <div class="welcome-sub">Est. 1929 · GMP · AYUSH Licensed</div>
     <div class="welcome-tagline">Classical Ayurvedic Manufacturer<br>Exclusively for B2B buyers</div>
     <div class="welcome-q">What describes you best?</div>
-    <div class="welcome-cards">
+    <div class="welcome-cards" style="grid-template-columns:1fr;">
       <div class="welcome-card dr-sel" id="wc-doctor" onclick="selectUserType('doctor')">
-        <div class="welcome-card-icon">👨‍⚕️</div>
-        <div class="welcome-card-title">Doctor / Clinic / Hospital</div>
-        <div class="welcome-card-desc">Ayurvedic practitioners, physicians & healthcare providers</div>
+        <div style="display:flex;align-items:center;gap:12px;text-align:left;">
+          <div class="welcome-card-icon" style="font-size:24px;flex-shrink:0;">👨‍⚕️</div>
+          <div>
+            <div class="welcome-card-title">Doctor / Clinic / Hospital</div>
+            <div class="welcome-card-desc">Ayurvedic practitioners, physicians & healthcare providers</div>
+          </div>
+        </div>
       </div>
       <div class="welcome-card ph-card-sel" id="wc-pharmacy" onclick="selectUserType('pharmacy')">
-        <div class="welcome-card-icon">🏪</div>
-        <div class="welcome-card-title">Pharmacy / Marketing Co.</div>
-        <div class="welcome-card-desc">Medical stores, distributors & marketing companies</div>
+        <div style="display:flex;align-items:center;gap:12px;text-align:left;">
+          <div class="welcome-card-icon" style="font-size:24px;flex-shrink:0;">🏪</div>
+          <div>
+            <div class="welcome-card-title">Pharmacy / Manufacturer</div>
+            <div class="welcome-card-desc">Pharmaceutical Manufacturers and Bulk Buyers.</div>
+          </div>
+        </div>
+      </div>
+      <div class="welcome-card ph-card-sel" id="wc-marketing" onclick="selectUserType('marketing')">
+        <div style="display:flex;align-items:center;gap:12px;text-align:left;">
+          <div class="welcome-card-icon" style="font-size:24px;flex-shrink:0;">📦</div>
+          <div>
+            <div class="welcome-card-title">Marketing Co. / Third Party Manufacturing</div>
+            <div class="welcome-card-desc">Marketing companies, PCD companies and Resellers.</div>
+          </div>
+        </div>
       </div>
     </div>
     <button class="welcome-btn" id="welcomeBtn" onclick="confirmUserType()" disabled>
@@ -1782,19 +1852,21 @@ window.addEventListener('firebase-ready',()=>{ setTimeout(loadEnquiryCounts,2000
 
 const CAT_MOQ = {
   'Asav-Arishta':   {qty:'10 Units', pack:'500 ml / bottle', format:'Liquid / Fermented', packSizes:'500ml', notes:'Order in multiples of 10 units. Bulk rates available for 50+ units.'},
-  'Churna':         {qty:'1 Kg', pack:'As required', format:'Powder / Churna', packSizes:'100g · 250g · 500g · 1Kg', notes:'Supplied in food-grade pouches. Custom packing available.'},
-  'Kadha':          {qty:'1 Kg', pack:'As required', format:'Decoction / Kadha', packSizes:'500ml · 1L', notes:'Available loose or bottled format.'},
-  'Vati':           {qty:'1 Kg', pack:'As required', format:'Tablet / Vati', packSizes:'Strip · Bulk', notes:'Bulk strip packing available on request.'},
-  'Guggul':         {qty:'1 Kg', pack:'As required', format:'Tablet / Guggul', packSizes:'Strip · Bulk', notes:'Available loose or strip-packed tablets.'},
-  'Pishti-Parpati': {qty:'1 Kg', pack:'As required', format:'Pishti / Parpati', packSizes:'100g · 500g · 1Kg', notes:'Moisture sensitive — airtight packing standard.'},
-  'Ras-Rasayan':    {qty:'1 Kg', pack:'As required', format:'Ras / Rasayan', packSizes:'As required', notes:'Premium mineral formulations in airtight amber containers.'},
-  'Bhasma':         {qty:'1 Kg', pack:'As required', format:'Bhasma / Calx', packSizes:'10g · 25g · 100g · 1Kg', notes:'Fine powder — sealed glass or food-grade containers.'},
-  'Loha':           {qty:'1 Kg', pack:'As required', format:'Loha / Iron compound', packSizes:'As required', notes:'Iron-based classical formulations in tablet or powder form.'},
-  'Tail':           {qty:'1 Ltr', pack:'1 Ltr / bottle', format:'Oil / Tail', packSizes:'1 Ltr', notes:'Minimum order 1 Litre. Bulk rates available.'},
-  'Miscellaneous':  {qty:'1 Kg', pack:'As required', format:'Various', packSizes:'As required', notes:'MOQ 1 Kg for most products. Jawahar Mohra by box only.'},
+  'Churna':         {qty:'1 Kg', pack:'As required', format:'Fine Powder', packSizes:'50gm · 100gm · 200gm', notes:'Supplied in food-grade pouches. Custom packing available.'},
+  'Kadha':          {qty:'1 Kg', pack:'As required', format:'Fine Powder · Coarse Powder', packSizes:'50gm · 100gm · 200gm', notes:'Available in fine or coarse powder format.'},
+  'Vati':           {qty:'1 Kg', pack:'As required', format:'Vati · Tablet', packSizes:'30 Tabs · 60 Tabs · 120 Tabs · 1000 Tabs', notes:'Bulk strip packing available on request.'},
+  'Guggul':         {qty:'1 Kg', pack:'As required', format:'Vati · Tablet', packSizes:'30 Tabs · 60 Tabs · 120 Tabs · 1000 Tabs', notes:'Available loose or strip-packed tablets.'},
+  'Pishti-Parpati': {qty:'1 Kg', pack:'As required', format:'Fine Powder', packSizes:'5gm · 10gm · 25gm · 100gm · 500gm · 1kg', notes:'Moisture sensitive — airtight packing standard.'},
+  'Ras-Rasayan':    {qty:'1 Kg', pack:'As required', format:'Tablet', packSizes:'20 Tabs · 40 Tabs · 500 Tabs', notes:'Premium mineral formulations in airtight amber containers.'},
+  'Bhasma':         {qty:'1 Kg', pack:'As required', format:'Fine Powder', packSizes:'5gm · 10gm · 25gm · 100gm · 500gm · 1kg', notes:'Fine powder — sealed glass or food-grade containers.'},
+  'Loha':           {qty:'1 Kg', pack:'As required', format:'Fine Powder', packSizes:'5gm · 10gm · 25gm · 100gm · 500gm · 1kg', notes:'Iron-based classical formulations.'},
+  'Tail':           {qty:'1 Ltr', pack:'1 Ltr / bottle', format:'Liquid', packSizes:'10ml · 20ml · 50ml · 100ml · 200ml', notes:'Minimum order 1 Litre. Bulk rates available.'},
+  'Miscellaneous':  {qty:'1 Kg', pack:'As required', format:'Various', packSizes:'As required', notes:'MOQ 1 Kg for most products.'},
 };
 const PROD_OVERRIDES = {
-  'Jawahar Mohra': {qty:'1 Box', pack:'Per box', format:'Pishti-Parpati / Classical', packSizes:'1 Box', notes:'Premium classical cardiac formulation. Contact for box size and pricing.'},
+  'Jawahar Mohra':  {qty:'1 Box', pack:'Per box', format:'Pishti-Parpati / Classical', packSizes:'1 Box', notes:'Premium classical cardiac formulation. Contact for box size and pricing.'},
+  'Gandhak Rasayan':{qty:'1 Kg', pack:'As required', format:'Tabs', packSizes:'30 Tabs · 60 Tabs · 120 Tabs · 1000 Tabs', notes:'Classical sulphur formulation. Effective for skin and blood disorders.'},
+  'Shilajit Resin': {qty:'10gm', pack:'As required', format:'Resin', packSizes:'10gm · 20gm · 50gm', notes:'Pure Shilajit Resin. Premium quality. Lab tested.'},
 };
 
 const BEST_SELLERS = ['Jawahar Mohra'];
@@ -2685,6 +2757,11 @@ function render(){
       return buildPharmacyCard(p, pd, en, ec);
     }
 
+    /* ── MARKETING CATALOGUE ── */
+    if(_userType === 'marketing'){
+      return buildMarketingCard(p, pd, en, ec);
+    }
+
     /* ── DOCTOR CATALOGUE (default) ── */
     /* Discounted rate display */
     const drNum = pd.discRate ? Number(pd.discRate) : (pd.mrp ? Math.round(Number(pd.mrp)*(1-(Number(pd.discPct)||35)/100)) : 0);
@@ -2823,10 +2900,18 @@ function openSheet(sr,name,nameHi,cat,event){
 
   document.getElementById('shRows').innerHTML=[
     ['Min. Order Qty',pd.qty],
-    ['Pack / Unit Size',pd.pack],
     ['Supply Format',pd.format],
     ['Pack Sizes Available',pd.packSizes],
-  ].map(([l,v])=>`<div class="sheet-row"><span class="sr-label">${l}</span><span class="sr-value">${v}</span></div>`).join('');
+  ].map(([l,v])=>{
+    const isPackSize = l === 'Pack Sizes Available';
+    const highlight = isPackSize && _userType === 'marketing'
+      ? 'style="background:#F0F7EE;border:1px solid #A8D5B5;border-radius:6px;padding:6px 8px;margin:4px 0;"'
+      : '';
+    const valStyle = isPackSize && _userType === 'marketing'
+      ? 'style="color:var(--green);font-weight:700;"'
+      : '';
+    return `<div class="sheet-row" ${highlight}><span class="sr-label">${l}</span><span class="sr-value" ${valStyle}>${v}</span></div>`;
+  }).join('');
 
   document.getElementById('shNote').textContent=pd.notes||'';
 
@@ -3349,24 +3434,30 @@ function openWelcome(){
   _selectedType = _userType;
   document.getElementById('welcomeOverlay').classList.add('open');
   /* Restore selection state */
-  document.getElementById('wc-doctor').classList.toggle('selected', _selectedType==='doctor');
-  document.getElementById('wc-doctor').classList.toggle('dr-sel', _selectedType==='doctor');
+  document.getElementById('wc-doctor').classList.toggle('selected',   _selectedType==='doctor');
+  document.getElementById('wc-doctor').classList.toggle('dr-sel',     _selectedType==='doctor');
   document.getElementById('wc-pharmacy').classList.toggle('selected', _selectedType==='pharmacy');
-  document.getElementById('wc-pharmacy').classList.toggle('ph-sel', _selectedType==='pharmacy');
+  document.getElementById('wc-pharmacy').classList.toggle('ph-sel',   _selectedType==='pharmacy');
+  document.getElementById('wc-marketing').classList.toggle('selected',_selectedType==='marketing');
+  document.getElementById('wc-marketing').classList.toggle('ph-sel',  _selectedType==='marketing');
   document.getElementById('welcomeBtn').disabled = !_selectedType;
 }
 
 function selectUserType(type){
   _selectedType = type;
-  const docCard = document.getElementById('wc-doctor');
-  const phCard  = document.getElementById('wc-pharmacy');
-  docCard.classList.toggle('selected', type==='doctor');
-  docCard.classList.toggle('dr-sel',   type==='doctor');
-  phCard.classList.toggle('selected',  type==='pharmacy');
-  phCard.classList.toggle('ph-sel',    type==='pharmacy');
+  document.getElementById('wc-doctor').classList.toggle('selected',   type==='doctor');
+  document.getElementById('wc-doctor').classList.toggle('dr-sel',     type==='doctor');
+  document.getElementById('wc-pharmacy').classList.toggle('selected', type==='pharmacy');
+  document.getElementById('wc-pharmacy').classList.toggle('ph-sel',   type==='pharmacy');
+  document.getElementById('wc-marketing').classList.toggle('selected',type==='marketing');
+  document.getElementById('wc-marketing').classList.toggle('ph-sel',  type==='marketing');
   document.getElementById('welcomeBtn').disabled = false;
-  document.getElementById('welcomeBtn').textContent =
-    type === 'doctor' ? '👨‍⚕️ View Doctor Catalogue →' : '🏪 View Pharmacy Catalogue →';
+  const labels = {
+    doctor:    '👨‍⚕️ View Doctor Catalogue →',
+    pharmacy:  '🏪 View Pharmacy Catalogue →',
+    marketing: '📦 View Marketing Catalogue →',
+  };
+  document.getElementById('welcomeBtn').textContent = labels[type] || 'Continue →';
 }
 
 function confirmUserType(){
@@ -3391,22 +3482,121 @@ function skipWelcome(){
 function updateUserBadge(){
   const badge = document.getElementById('userTypeBadge');
   if(!badge) return;
-  if(_userType === 'doctor'){
-    badge.className = 'user-type-badge doctor';
-    badge.textContent = '👨‍⚕️ Doctor · Switch';
-    badge.style.display = 'inline-flex';
-  } else if(_userType === 'pharmacy'){
-    badge.className = 'user-type-badge pharmacy';
-    badge.textContent = '🏪 Pharmacy · Switch';
+  const labels = {
+    doctor:    '👨‍⚕️ Doctor · Switch',
+    pharmacy:  '🏪 Pharmacy · Switch',
+    marketing: '📦 Marketing · Switch',
+  };
+  const classes = {
+    doctor:   'user-type-badge doctor',
+    pharmacy: 'user-type-badge pharmacy',
+    marketing:'user-type-badge pharmacy',
+  };
+  if(_userType && labels[_userType]){
+    badge.className = classes[_userType];
+    badge.textContent = labels[_userType];
     badge.style.display = 'inline-flex';
   } else {
     badge.style.display = 'none';
   }
 }
 
+function buildMarketingCard(p, pd, en, ec){
+  /* Hide Asav-Arishta */
+  if(p.cat === 'Asav-Arishta') return '';
+
+  /* Hide most Miscellaneous — keep only Gandhak Rasayan + Shilajit Resin */
+  if(p.cat === 'Miscellaneous' && p.n !== 'Gandhak Rasayan' && p.n !== 'Shilajit Resin') return '';
+
+  const cc = getCatConf(p.cat);
+  const isBs = BEST_SELLERS.includes(p.n);
+  const isOut = pd.stock === 'Out of Stock';
+
+  const catIcon = CAT_ICONS[p.cat]
+    ? `<div class="card-img-icon">${CAT_ICONS[p.cat]}</div>`
+    : `<div class="card-emoji">${cc.e}</div>`;
+
+  const imgHtml = pd.imageUrl
+    ? `<img src="${pd.imageUrl}" alt="${en}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r-img);" onerror="this.style.display='none'">`
+    : catIcon;
+
+  const topBadge = isOut
+    ? '<div class="stock-badge out" style="top:6px;left:6px;position:absolute;z-index:5;">OUT OF STOCK</div>'
+    : isBs
+    ? '<div class="stock-badge in bestseller-badge" style="top:6px;left:6px;position:absolute;z-index:5;">⭐ BEST SELLER</div>'
+    : '';
+
+  const formsMap = {
+    'Guggul':        '• Vati  • Tablet',
+    'Vati':          '• Vati  • Tablet',
+    'Ras-Rasayan':   '• Tablet',
+    'Loha':          '• Fine Powder',
+    'Churna':        '• Fine Powder',
+    'Kadha':         '• Fine Powder  • Coarse Powder',
+    'Pishti-Parpati':'• Fine Powder',
+    'Bhasma':        '• Fine Powder',
+    'Tail':          '• Liquid',
+    'Miscellaneous': p.n==='Gandhak Rasayan' ? '• Tabs' : (p.n==='Shilajit Resin' ? '• Resin' : null),
+  };
+  const forms = formsMap[p.cat] !== undefined ? formsMap[p.cat] : null;
+  const formsHtml = forms
+    ? `<div class="ph-forms-row"><span class="ph-forms-label">Available in:</span><span class="ph-forms-val">${forms}</span></div>`
+    : '';
+
+  const packSizes = pd.packSizes && pd.packSizes !== 'As required' ? pd.packSizes : null;
+  const packSizesHtml = packSizes
+    ? `<div class="mkt-pack-sizes">
+        <span class="mkt-pack-label">📦 Pack Sizes</span>
+        <div class="mkt-pack-tags">${packSizes.split('·').map(s=>`<span class="mkt-pack-tag">${s.trim()}</span>`).join('')}</div>
+      </div>`
+    : '';
+
+  return `<div class="card ph-b2b-card" data-sr="${p.sr}" data-cat="${ec}" style="position:relative;">
+    <div class="card-band"></div>
+    <div class="card-img" style="background:${cc.bg}20;position:relative;">
+      ${topBadge}
+      ${imgHtml}
+    </div>
+    <div class="card-body">
+      <div class="card-cat" style="background:${cc.bg};color:${cc.c};">
+        <span class="card-cat-icon">${CAT_ICONS[p.cat]||cc.e}</span>
+        ${p.cat.toUpperCase()}
+      </div>
+      <div class="card-name">${p.n}</div>
+      ${p.hi ? `<div class="card-name-hi">${p.hi}</div>` : ''}
+      ${p.rog ? `<div class="rog-preview">${p.rog.length>80?p.rog.slice(0,77)+'…':p.rog}</div>` : ''}
+      <div class="ph-trust-grid">
+        <span class="ph-trust-chip">⚡ Fast Dispatch</span>
+        <span class="ph-trust-chip">✅ GMP Certified</span>
+        <span class="ph-trust-chip">🏅 ISO Accredited</span>
+        <span class="ph-trust-chip">🌿 AYUSH Licensed</span>
+      </div>
+      <div style="border-top:1px solid var(--ink-06);margin:8px 0 7px;"></div>
+      ${formsHtml}
+      ${packSizesHtml}
+      <div class="ph-moq-box">
+        <span class="ph-moq-val">📦 Third Party Manufacturing · MOQ starts at 50 Units</span>
+      </div>
+      <button class="ph-enquire-btn" onclick="mktEnquire('${en}','${ec}')">
+        📲 Get Third Party Quote on WhatsApp
+      </button>
+    </div>
+  </div>`;
+}
+
+function mktEnquire(name, cat){
+  const msg = encodeURIComponent(
+    `Hello Chand Aushdhalaya,\n\nI am interested in Third Party Manufacturing / Marketing services for:\n*${name}*\n\nPlease share MOQ, pricing and manufacturing details.\n\n– Sent from B2B Catalogue`
+  );
+  window.open(`https://wa.me/919999591429?text=${msg}`, '_blank');
+}
+
 function buildPharmacyCard(p, pd, en, ec){
   /* Hide Asav-Arishta from pharmacy catalogue */
   if(p.cat === 'Asav-Arishta') return '';
+
+  /* Hide most Miscellaneous — keep only Gandhak Rasayan + Shilajit Resin */
+  if(p.cat === 'Miscellaneous' && p.n !== 'Gandhak Rasayan' && p.n !== 'Shilajit Resin') return '';
 
   const cc = getCatConf(p.cat);
   const isBs = BEST_SELLERS.includes(p.n);
@@ -3434,18 +3624,18 @@ function buildPharmacyCard(p, pd, en, ec){
 
   /* Available forms by category */
   const formsMap = {
-    'Guggul':        '• Fine Powder  • Vati',
-    'Vati':          '• Fine Powder  • Vati',
-    'Ras-Rasayan':   '• Fine Powder',
+    'Guggul':        '• Vati  • Tablet',
+    'Vati':          '• Vati  • Tablet',
+    'Ras-Rasayan':   '• Tablet',
     'Loha':          '• Fine Powder',
     'Churna':        '• Fine Powder',
     'Kadha':         '• Fine Powder  • Coarse Powder',
     'Pishti-Parpati':'• Fine Powder',
     'Bhasma':        '• Fine Powder',
     'Tail':          '• Liquid',
-    'Miscellaneous': p.n.toLowerCase().includes('shilajit resin') ? '• Resin' : '• Powder',
+    'Miscellaneous': p.n==='Gandhak Rasayan' ? '• Tabs' : (p.n==='Shilajit Resin' ? '• Resin' : null),
   };
-  const forms = formsMap[p.cat] || null;
+  const forms = formsMap[p.cat] !== undefined ? formsMap[p.cat] : null;
   const formsHtml = forms
     ? `<div class="ph-forms-row"><span class="ph-forms-label">Available in:</span><span class="ph-forms-val">${forms}</span></div>`
     : '';
