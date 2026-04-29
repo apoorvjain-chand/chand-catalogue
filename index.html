@@ -2999,6 +2999,138 @@ async function fsSession(){
   await fsWrite('sessions', aToday(), { count: fsInc(1), date: aToday() });
 }
 
+/* ═══════════════════════════════════
+   PHASE 1 TRACKING
+═══════════════════════════════════ */
+
+/* ── UTM / Campaign tracking ── */
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref') || params.get('utm_source') || null;
+  if(ref){
+    sessionStorage.setItem('chand_ref', ref);
+    /* Log campaign visit */
+    if(window._fsReady) fsCampaignHit(ref);
+    else window.addEventListener('firebase-ready', ()=>fsCampaignHit(ref), {once:true});
+  }
+})();
+
+async function fsCampaignHit(ref){
+  if(!window._fsReady||!window._fsDb) return;
+  try{
+    await fsWrite('campaigns', sanitize(ref), {
+      ref,
+      hits: fsInc(1),
+      lastSeen: new Date().toISOString(),
+    });
+    await fsWrite('daily', aToday(), { [`campaign_${sanitize(ref)}`]: fsInc(1) });
+  }catch(e){}
+}
+
+function getCampaignRef(){ return sessionStorage.getItem('chand_ref') || 'direct'; }
+
+/* ── Session duration tracking ── */
+const _sessionStart = Date.now();
+let   _sessionActive = true;
+let   _sessionDuration = 0;
+
+setInterval(()=>{
+  if(_sessionActive) _sessionDuration = Math.round((Date.now()-_sessionStart)/1000);
+}, 5000);
+
+document.addEventListener('visibilitychange', ()=>{
+  _sessionActive = document.visibilityState === 'visible';
+});
+
+window.addEventListener('beforeunload', ()=>{
+  const dur = Math.round((Date.now()-_sessionStart)/1000);
+  if(dur > 5 && window._fsReady && window._fsDb){
+    /* Use sendBeacon for reliability on page close */
+    const ref = getCampaignRef();
+    fsWrite('sessions_detail', aToday()+'_'+Date.now(), {
+      duration_sec: dur,
+      ref,
+      userType: _userType||'unknown',
+      date: aToday(),
+      products_viewed: _sessionBrowsed.length,
+    }).catch(()=>{});
+  }
+});
+
+/* ── Product return visit tracking ── */
+const _productVisitCounts = JSON.parse(localStorage.getItem('chand_pviz')||'{}');
+
+function trackReturnVisit(sr, name, cat){
+  _productVisitCounts[sr] = (_productVisitCounts[sr]||0) + 1;
+  localStorage.setItem('chand_pviz', JSON.stringify(_productVisitCounts));
+  if(_productVisitCounts[sr] >= 2){
+    /* Return visit — high intent signal */
+    fsWrite('products', sr, {
+      name, cat,
+      returnVisits: fsInc(1),
+      intentScore: fsInc(20),
+    });
+    fsWrite('hot_leads', getCampaignRef()+'_'+sr, {
+      sr, name, cat,
+      visits: _productVisitCounts[sr],
+      userType: _userType||'unknown',
+      lastSeen: new Date().toISOString(),
+      ref: getCampaignRef(),
+    });
+  }
+}
+
+/* ── Search → enquiry funnel ── */
+let _lastSearch = null;
+const _origSearch = window.onSearch;
+
+function trackSearchToEnquiry(term){
+  _lastSearch = term;
+  fsLogSearch(term);
+  /* Also log search with user type context */
+  if(term.length > 2){
+    fsWrite('searches', sanitize(term), {
+      term,
+      count: fsInc(1),
+      [`type_${_userType||'unknown'}`]: fsInc(1),
+    });
+  }
+}
+
+function trackEnquiryFromSearch(sr, name, cat){
+  if(_lastSearch){
+    fsWrite('search_funnel', sanitize(_lastSearch)+'_'+sr, {
+      search: _lastSearch,
+      product: name,
+      sr, cat,
+      userType: _userType||'unknown',
+      converted: true,
+      timestamp: new Date().toISOString(),
+    });
+    _lastSearch = null;
+  }
+}
+
+/* ── Intent scoring ── */
+function calcIntentScore(sr){
+  let score = 0;
+  const visits = _productVisitCounts[sr]||0;
+  if(visits >= 2) score += 20;
+  if(visits >= 3) score += 20;
+  const browsed = _sessionBrowsed.find(p=>p.sr===sr);
+  if(browsed) score += 10;
+  if(_lastSearch) score += 15;
+  if(_sessionBrowsed.length >= 5) score += 10;
+  if(_sessionDuration > 120) score += 10;
+  return score;
+}
+
+function getIntentLabel(score){
+  if(score >= 70) return { label:'🔥 Hot', color:'#B00020' };
+  if(score >= 40) return { label:'🌡️ Warm', color:'#E65100' };
+  return { label:'❄️ Cold', color:'#1B5E82' };
+}
+
 /* ── Init session ── */
 (function(){
   const d = aLoad(), today = aToday();
@@ -3034,6 +3166,14 @@ function aView(sr, name, cat){
   fsIncProduct(sr, name, cat, 'views');
   fsIncDaily('views');
   trackBrowse(sr, name, cat);
+  trackReturnVisit(sr, name, cat);
+  /* Log campaign + userType context on view */
+  fsWrite('products', sr, {
+    name, cat,
+    [`type_${_userType||'unknown'}`]: fsInc(1),
+    ref: getCampaignRef(),
+    intentScore: fsInc(calcIntentScore(sr)),
+  });
 }
 
 /* ── Track category click ── */
@@ -3068,6 +3208,22 @@ function aWA(sr, name, cat){
   aSave(d);
   fsIncProduct(sr, name, cat, 'waClicks');
   fsIncDaily('wa');
+  /* Search → enquiry funnel */
+  trackEnquiryFromSearch(sr, name, cat);
+  /* Campaign conversion tracking */
+  const ref = getCampaignRef();
+  if(ref !== 'direct'){
+    fsWrite('campaigns', sanitize(ref), {
+      conversions: fsInc(1),
+      lastConversion: new Date().toISOString(),
+    });
+  }
+  /* Intent + userType on conversion */
+  fsWrite('products', sr, {
+    name, cat,
+    [`wa_${_userType||'unknown'}`]: fsInc(1),
+    lastEnquiry: new Date().toISOString(),
+  });
 
 }
 
@@ -3077,7 +3233,7 @@ function aSearch(term){
   const d = aLoad(), t = term.toLowerCase().trim();
   d.searches[t] = (d.searches[t]||0) + 1;
   aSave(d);
-  fsLogSearch(t);
+  trackSearchToEnquiry(t);
 }
 
 /* ── Scroll tracker ── */
@@ -3467,6 +3623,43 @@ function confirmUserType(){
   document.getElementById('welcomeOverlay').classList.remove('open');
   updateUserBadge();
   render();
+  /* Track user type selection in Firebase */
+  fsTrackUserType(_userType);
+}
+
+async function fsTrackUserType(type){
+  if(!window._fsReady || !window._fsDb) return;
+  try{
+    const {collection, doc, setDoc, getDoc, updateDoc, increment} =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const db = window._fsDb;
+    /* Increment audience counter */
+    const audRef = doc(collection(db,'audience'), type);
+    const snap = await getDoc(audRef);
+    if(snap.exists()){
+      await updateDoc(audRef, { count: increment(1), lastSeen: new Date().toISOString() });
+    } else {
+      await setDoc(audRef, { count: 1, type, lastSeen: new Date().toISOString() });
+    }
+    /* Daily audience tracking */
+    const today = new Date().toISOString().slice(0,10);
+    const dayRef = doc(collection(db,'daily'), today);
+    const daySnap = await getDoc(dayRef);
+    const field = `audience_${type}`;
+    if(daySnap.exists()){
+      await updateDoc(dayRef, { [field]: increment(1) });
+    } else {
+      await setDoc(dayRef, { [field]: 1 }, {merge:true});
+    }
+    /* Track session with user type */
+    const uid = localStorage.getItem('chand_uid') || ('u_'+Math.random().toString(36).slice(2));
+    localStorage.setItem('chand_uid', uid);
+    await setDoc(doc(collection(db,'sessions'), uid+'_'+Date.now()), {
+      uid, type,
+      timestamp: new Date().toISOString(),
+      device: /Mobi/.test(navigator.userAgent) ? 'mobile' : 'desktop',
+    });
+  }catch(e){ console.error('fsTrackUserType error:', e.message); }
 }
 
 function skipWelcome(){
@@ -3860,6 +4053,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     <div class="tab" onclick="switchTab('categories',this)">Categories</div>
     <div class="tab" onclick="switchTab('searches',this)">Searches</div>
     <div class="tab" onclick="switchTab('users',this)">👤 Users</div>
+    <div class="tab" onclick="switchTab('audience',this)">📊 Audience</div>
+    <div class="tab" onclick="switchTab('behaviour',this)">🧠 Behaviour</div>
     <div class="tab" onclick="switchTab('drleads',this)">🩺 Doctor Leads</div>
     <div class="tab" onclick="switchTab('pricing',this)">💰 Pricing</div>
   </div>
@@ -4014,6 +4209,121 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     </div>
   </div>
 
+  <!-- BEHAVIOUR TAB -->
+  <div class="tab-panel" id="tab-behaviour">
+    <div class="sec">
+      <div class="sec-hdr">
+        <span class="sec-title">🧠 Buying Behaviour</span>
+        <span class="sec-badge" id="beh-badge">Phase 1</span>
+      </div>
+      <div class="sec-body" style="padding:12px 16px;">
+
+        <!-- Funnel -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:10px;font-weight:700;color:var(--ink-60);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Conversion Funnel</div>
+          <div id="beh-funnel" style="display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+
+        <!-- Hot leads -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:10px;font-weight:700;color:var(--ink-60);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">🔥 Hot Leads (Return Visitors)</div>
+          <div style="overflow-x:auto;">
+            <table class="prod-table" style="width:100%;">
+              <thead class="pt-head"><tr><th>Product</th><th>Category</th><th>Visits</th><th>User Type</th><th>Last Seen</th></tr></thead>
+              <tbody id="beh-hot-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Search funnel -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:10px;font-weight:700;color:var(--ink-60);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">🔍 Search → Enquiry Conversions</div>
+          <div style="overflow-x:auto;">
+            <table class="prod-table" style="width:100%;">
+              <thead class="pt-head"><tr><th>Search Term</th><th>Product Enquired</th><th>User Type</th><th>Time</th></tr></thead>
+              <tbody id="beh-search-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Campaigns -->
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--ink-60);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">📲 Campaign Performance</div>
+          <div style="overflow-x:auto;">
+            <table class="prod-table" style="width:100%;">
+              <thead class="pt-head"><tr><th>Campaign Ref</th><th>Hits</th><th>Conversions</th><th>Conv. Rate</th><th>Last Seen</th></tr></thead>
+              <tbody id="beh-campaign-tbody"></tbody>
+            </table>
+          </div>
+          <div style="font-size:9px;color:var(--ink-40);margin-top:8px;">
+            Add <code>?ref=wapp_doctor</code> to your catalogue link in WhatsApp campaigns to track performance.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- AUDIENCE TAB -->
+  <div class="tab-panel" id="tab-audience">
+    <div class="sec">
+      <div class="sec-hdr">
+        <span class="sec-title">📊 Audience Breakdown</span>
+        <span class="sec-badge" id="aud-total">Loading...</span>
+      </div>
+      <div class="sec-body" style="padding:16px;">
+        <!-- Summary chips -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;" id="aud-chips">
+          <div class="mc" style="text-align:center;">
+            <div class="mc-lbl">👨‍⚕️ Doctors</div>
+            <div class="mc-val" id="aud-doctor">—</div>
+            <div class="mc-sub" id="aud-doctor-pct">—</div>
+          </div>
+          <div class="mc" style="text-align:center;">
+            <div class="mc-lbl">🏪 Pharmacy</div>
+            <div class="mc-val" id="aud-pharmacy">—</div>
+            <div class="mc-sub" id="aud-pharmacy-pct">—</div>
+          </div>
+          <div class="mc" style="text-align:center;">
+            <div class="mc-lbl">📦 Marketing</div>
+            <div class="mc-val" id="aud-marketing">—</div>
+            <div class="mc-sub" id="aud-marketing-pct">—</div>
+          </div>
+        </div>
+        <!-- Device split -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:10px;font-weight:700;color:var(--ink-60);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">Device Split</div>
+          <div style="display:flex;gap:10px;">
+            <div class="mc" style="flex:1;text-align:center;">
+              <div class="mc-lbl">📱 Mobile</div>
+              <div class="mc-val" id="aud-mobile">—</div>
+            </div>
+            <div class="mc" style="flex:1;text-align:center;">
+              <div class="mc-lbl">💻 Desktop</div>
+              <div class="mc-val" id="aud-desktop">—</div>
+            </div>
+          </div>
+        </div>
+        <!-- Recent sessions -->
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--ink-60);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">Recent Sessions</div>
+          <div style="overflow-x:auto;">
+            <table class="prod-table" style="width:100%;">
+              <thead class="pt-head">
+                <tr>
+                  <th>Time</th>
+                  <th>Audience</th>
+                  <th>Device</th>
+                </tr>
+              </thead>
+              <tbody id="aud-sessions-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- PRICING TAB -->
   <div class="tab-panel" id="tab-pricing">
     <div class="sec">
@@ -4060,6 +4370,158 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
 
 </div>
 <script>
+/* ═══════════════════════════════════
+   BEHAVIOUR TAB
+═══════════════════════════════════ */
+async function loadBehaviourData(){
+  if(!window._fsReady||!window._fsDb) return;
+  try{
+    const {collection, getDocs, query, orderBy, limit} =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const db = window._fsDb;
+
+    /* ── Funnel data from daily ── */
+    const dailySnap = await getDocs(collection(db,'daily'));
+    let totalViews=0, totalMoq=0, totalWa=0, totalSessions=0;
+    dailySnap.forEach(d=>{
+      const data = d.data();
+      totalViews    += data.views||0;
+      totalMoq      += data.moq||0;
+      totalWa       += data.wa||0;
+      totalSessions += data.count||0;
+    });
+
+    const funnelSteps = [
+      { label:'👁 Total Sessions',   val:totalSessions, color:'#2D5A27' },
+      { label:'📦 Product Views',    val:totalViews,    color:'#388E3C' },
+      { label:'🔓 MOQ Opens',        val:totalMoq,      color:'#C5A059' },
+      { label:'📲 WhatsApp Clicks',  val:totalWa,       color:'#E65100' },
+    ];
+
+    const maxVal = Math.max(...funnelSteps.map(s=>s.val), 1);
+    document.getElementById('beh-funnel').innerHTML = funnelSteps.map((s,i)=>{
+      const pct = Math.round(s.val/maxVal*100);
+      const conv = i>0 ? (funnelSteps[i-1].val>0 ? Math.round(s.val/funnelSteps[i-1].val*100)+'%' : '—') : '100%';
+      return `<div style="margin-bottom:4px;">
+        <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px;">
+          <span style="font-weight:600;">${s.label}</span>
+          <span style="color:var(--ink-40);">${s.val.toLocaleString()} &nbsp; <span style="color:${s.color};font-weight:700;">${conv}</span></span>
+        </div>
+        <div style="background:#eee;border-radius:4px;height:8px;overflow:hidden;">
+          <div style="width:${pct}%;background:${s.color};height:100%;border-radius:4px;transition:width .5s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    /* ── Hot leads ── */
+    const hotSnap = await getDocs(collection(db,'hot_leads'));
+    let hotLeads = [];
+    hotSnap.forEach(d=>hotLeads.push(d.data()));
+    hotLeads.sort((a,b)=>(b.visits||0)-(a.visits||0));
+
+    document.getElementById('beh-hot-tbody').innerHTML = hotLeads.slice(0,15).map(h=>{
+      const time = h.lastSeen ? new Date(h.lastSeen).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '—';
+      const typeIcon = {doctor:'👨‍⚕️',pharmacy:'🏪',marketing:'📦'}[h.userType]||'—';
+      return `<tr class="pt-row">
+        <td style="font-size:10px;font-weight:600;">${h.name||'—'}</td>
+        <td style="font-size:10px;color:var(--ink-60);">${h.cat||'—'}</td>
+        <td><span style="font-size:11px;font-weight:700;color:#B00020;">${h.visits||1}x</span></td>
+        <td style="font-size:10px;">${typeIcon} ${h.userType||'—'}</td>
+        <td style="font-size:10px;color:var(--ink-40);">${time}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink-40);padding:12px;font-size:10px;">No return visits yet</td></tr>';
+
+    /* ── Search funnel ── */
+    const sfSnap = await getDocs(collection(db,'search_funnel'));
+    let sfRows = [];
+    sfSnap.forEach(d=>sfRows.push(d.data()));
+    sfRows.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+
+    document.getElementById('beh-search-tbody').innerHTML = sfRows.slice(0,10).map(s=>{
+      const time = s.timestamp ? new Date(s.timestamp).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '—';
+      const typeIcon = {doctor:'👨‍⚕️',pharmacy:'🏪',marketing:'📦'}[s.userType]||'—';
+      return `<tr class="pt-row">
+        <td style="font-size:10px;color:#1B5E82;font-weight:600;">"${s.search||'—'}"</td>
+        <td style="font-size:10px;">${s.product||'—'}</td>
+        <td style="font-size:10px;">${typeIcon} ${s.userType||'—'}</td>
+        <td style="font-size:10px;color:var(--ink-40);">${time}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--ink-40);padding:12px;font-size:10px;">No search conversions yet</td></tr>';
+
+    /* ── Campaigns ── */
+    const campSnap = await getDocs(collection(db,'campaigns'));
+    let camps = [];
+    campSnap.forEach(d=>camps.push({id:d.id, ...d.data()}));
+    camps.sort((a,b)=>(b.hits||0)-(a.hits||0));
+
+    document.getElementById('beh-campaign-tbody').innerHTML = camps.slice(0,10).map(c=>{
+      const hits = c.hits||0;
+      const conv = c.conversions||0;
+      const rate = hits>0 ? Math.round(conv/hits*100)+'%' : '—';
+      const time = c.lastSeen ? new Date(c.lastSeen).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '—';
+      return `<tr class="pt-row">
+        <td style="font-size:10px;font-weight:600;color:#1B5E82;">${c.ref||c.id}</td>
+        <td style="font-size:11px;font-weight:700;">${hits}</td>
+        <td style="font-size:11px;font-weight:700;color:#1E6B3A;">${conv}</td>
+        <td style="font-size:11px;font-weight:700;color:${conv>0?'#1E6B3A':'var(--ink-40)'};">${rate}</td>
+        <td style="font-size:10px;color:var(--ink-40);">${time}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink-40);padding:12px;font-size:10px;">No campaigns yet — add ?ref=campaign_name to your links</td></tr>';
+
+  }catch(e){ console.error('loadBehaviourData error:', e.message); }
+}
+
+/* ═══════════════════════════════════
+   AUDIENCE TAB
+═══════════════════════════════════ */
+async function loadAudienceData(){
+  if(!window._fsReady || !window._fsDb) return;
+  try{
+    const {collection, getDocs, query, orderBy, limit} =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const db = window._fsDb;
+
+    /* Audience counts */
+    const audSnap = await getDocs(collection(db,'audience'));
+    let counts = { doctor:0, pharmacy:0, marketing:0 };
+    audSnap.forEach(d=>{ counts[d.id] = d.data().count || 0; });
+    const total = counts.doctor + counts.pharmacy + counts.marketing;
+
+    document.getElementById('aud-total').textContent = total + ' total sessions';
+    document.getElementById('aud-doctor').textContent = counts.doctor;
+    document.getElementById('aud-pharmacy').textContent = counts.pharmacy;
+    document.getElementById('aud-marketing').textContent = counts.marketing;
+    document.getElementById('aud-doctor-pct').textContent   = total ? Math.round(counts.doctor/total*100)+'%' : '—';
+    document.getElementById('aud-pharmacy-pct').textContent = total ? Math.round(counts.pharmacy/total*100)+'%' : '—';
+    document.getElementById('aud-marketing-pct').textContent= total ? Math.round(counts.marketing/total*100)+'%' : '—';
+
+    /* Recent sessions */
+    const sessSnap = await getDocs(collection(db,'sessions'));
+    let sessions = [];
+    sessSnap.forEach(d=>sessions.push(d.data()));
+    sessions.sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp));
+
+    /* Device split */
+    const mobile  = sessions.filter(s=>s.device==='mobile').length;
+    const desktop = sessions.filter(s=>s.device==='desktop').length;
+    document.getElementById('aud-mobile').textContent  = mobile;
+    document.getElementById('aud-desktop').textContent = desktop;
+
+    const typeIcon = { doctor:'👨‍⚕️', pharmacy:'🏪', marketing:'📦' };
+    document.getElementById('aud-sessions-tbody').innerHTML =
+      sessions.slice(0,20).map(s=>{
+        const time = s.timestamp ? new Date(s.timestamp).toLocaleString('en-IN',
+          {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+        return `<tr class="pt-row">
+          <td style="font-size:10px;color:var(--ink-60);">${time}</td>
+          <td><span style="font-size:11px;">${typeIcon[s.type]||'—'} ${s.type||'—'}</span></td>
+          <td style="font-size:10px;color:var(--ink-60);">${s.device==='mobile'?'📱':'💻'} ${s.device||'—'}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--ink-40);padding:16px;font-size:11px;">No sessions yet — data appears once users select their type</td></tr>';
+
+  }catch(e){ console.error('loadAudienceData error:', e.message); }
+}
+
 /* ═══════════════════════════════════
    PRICING TAB
 ═══════════════════════════════════ */
@@ -4564,6 +5026,8 @@ function switchTab(name, el){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('tab-'+name).classList.add('active');
+  if(name === 'audience')  loadAudienceData();
+  if(name === 'behaviour') loadBehaviourData();
   if(name === 'pricing'){
     if(!_pricingLoaded){
       loadPricingFromFirebase().then(()=>renderPricingTable());
