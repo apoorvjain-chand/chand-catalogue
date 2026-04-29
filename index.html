@@ -1162,8 +1162,8 @@ body {
   margin-bottom: 8px;
 }
 .ph-slab-col {
-  background: var(--cream);
-  border: 1px solid var(--ink-12);
+  background: #F0F7EE;
+  border: 1px solid #A8D5B5;
   border-radius: 6px;
   padding: 5px 4px;
   text-align: center;
@@ -1199,6 +1199,28 @@ body {
   border-radius: 10px;
   padding: 2px 7px;
   white-space: nowrap;
+}
+.ph-forms-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 7px;
+  background: #F9FBF8;
+  border: 1px solid var(--ink-06);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+.ph-forms-label {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--ink-40);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+.ph-forms-val {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--ink);
 }
 .ph-enquire-btn {
   width: 100%;
@@ -1760,7 +1782,7 @@ const CAT_MOQ = {
   'Ras-Rasayan':    {qty:'1 Kg', pack:'As required', format:'Ras / Rasayan', packSizes:'As required', notes:'Premium mineral formulations in airtight amber containers.'},
   'Bhasma':         {qty:'1 Kg', pack:'As required', format:'Bhasma / Calx', packSizes:'10g · 25g · 100g · 1Kg', notes:'Fine powder — sealed glass or food-grade containers.'},
   'Loha':           {qty:'1 Kg', pack:'As required', format:'Loha / Iron compound', packSizes:'As required', notes:'Iron-based classical formulations in tablet or powder form.'},
-  'Tail':           {qty:'1 Ltr', pack:'1 Ltr / bottle', format:'Oil / Tail', packSizes:'1 Ltr', notes:'Order in multiples of 1 Ltr. Bulk rates available.'},
+  'Tail':           {qty:'1 Ltr', pack:'1 Ltr / bottle', format:'Oil / Tail', packSizes:'1 Ltr', notes:'Minimum order 1 Litre. Bulk rates available.'},
   'Miscellaneous':  {qty:'1 Kg', pack:'As required', format:'Various', packSizes:'As required', notes:'MOQ 1 Kg for most products. Jawahar Mohra by box only.'},
 };
 const PROD_OVERRIDES = {
@@ -3402,6 +3424,24 @@ function buildPharmacyCard(p, pd, en, ec){
   const slab1 = `1–5 ${unit}`;
   const slab2 = `6 ${unit}+`;
 
+  /* Available forms by category */
+  const formsMap = {
+    'Guggul':        '• Fine Powder  • Vati',
+    'Vati':          '• Fine Powder  • Vati',
+    'Ras-Rasayan':   '• Fine Powder',
+    'Loha':          '• Fine Powder',
+    'Churna':        '• Fine Powder',
+    'Kadha':         '• Fine Powder  • Coarse Powder',
+    'Pishti-Parpati':'• Fine Powder',
+    'Bhasma':        '• Fine Powder',
+    'Tail':          '• Liquid',
+    'Miscellaneous': p.n.toLowerCase().includes('shilajit resin') ? '• Resin' : '• Powder',
+  };
+  const forms = formsMap[p.cat] || null;
+  const formsHtml = forms
+    ? `<div class="ph-forms-row"><span class="ph-forms-label">Available in:</span><span class="ph-forms-val">${forms}</span></div>`
+    : '';
+
   return `<div class="card ph-b2b-card" data-sr="${p.sr}" data-cat="${ec}" style="position:relative;">
     <div class="card-band"></div>
     <div class="card-img" style="background:${cc.bg}20;position:relative;">
@@ -3417,6 +3457,7 @@ function buildPharmacyCard(p, pd, en, ec){
       ${p.hi ? `<div class="card-name-hi">${p.hi}</div>` : ''}
       ${p.rog ? `<div class="rog-preview">${p.rog.length>80?p.rog.slice(0,77)+'…':p.rog}</div>` : ''}
       <div style="border-top:1px solid var(--ink-06);margin:8px 0 7px;"></div>
+      ${formsHtml}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
         <div style="font-size:9px;color:var(--ink-60);">Min. Order: <strong style="color:var(--ink);">${pd.qty}</strong></div>
         <div style="font-size:8px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.3px;">📦 Slab Pricing</div>
@@ -3435,6 +3476,7 @@ function buildPharmacyCard(p, pd, en, ec){
         <span class="ph-trust-chip">⚡ Fast Dispatch</span>
         <span class="ph-trust-chip">✅ GMP Certified</span>
         <span class="ph-trust-chip">🏅 ISO Accredited</span>
+        <span class="ph-trust-chip">🌿 AYUSH Licensed</span>
       </div>
       <button class="ph-enquire-btn" onclick="phEnquire('${en}','${ec}')">
         📲 Get Bulk Rate on WhatsApp
