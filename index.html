@@ -1184,26 +1184,25 @@ body {
   color: var(--green);
   font-weight: 700;
 }
+.ph-trust-overlay { display: none; }
 .ph-trust-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
   margin-bottom: 8px;
 }
 .ph-trust-chip {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 500;
   color: #2D5A27;
   background: #E6F4EC;
   border: 1px solid #A8D5B5;
-  border-radius: 10px;
-  padding: 4px 6px;
-  white-space: nowrap;
-  text-align: center;
+  border-radius: 8px;
+  padding: 4px 10px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
+  gap: 5px;
+  width: 100%;
 }
 .ph-forms-row {
   display: flex;
@@ -1356,7 +1355,7 @@ body {
     <div class="welcome-logo">🌿 Chand Aushdhalaya</div>
     <div class="welcome-sub">Est. 1929 · GMP · AYUSH Licensed</div>
     <div class="welcome-tagline">Classical Ayurvedic Manufacturer<br>Exclusively for B2B buyers</div>
-    <div class="welcome-q">Who are you?</div>
+    <div class="welcome-q">What describes you best?</div>
     <div class="welcome-cards">
       <div class="welcome-card dr-sel" id="wc-doctor" onclick="selectUserType('doctor')">
         <div class="welcome-card-icon">👨‍⚕️</div>
@@ -1372,7 +1371,6 @@ body {
     <button class="welcome-btn" id="welcomeBtn" onclick="confirmUserType()" disabled>
       Continue →
     </button>
-    <div class="welcome-switch" onclick="skipWelcome()">Browse catalogue without selecting</div>
   </div>
 </div>
 
