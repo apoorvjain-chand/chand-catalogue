@@ -1124,6 +1124,47 @@ body {
 .dr-trust-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;}
 .dr-trust-chip{font-size:9px;font-weight:600;color:#2D5A27;background:#E6F4EC;border:1px solid #A8D5B5;border-radius:20px;padding:3px 8px;letter-spacing:.2px;white-space:nowrap;}
 
+/* ═══════════════════════════════════
+   WELCOME POPUP
+═══════════════════════════════════ */
+.welcome-overlay{display:none;position:fixed;inset:0;background:rgba(26,18,8,.65);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(6px);padding:16px;}
+.welcome-overlay.open{display:flex;}
+.welcome-box{background:var(--white);border-radius:20px;padding:28px 24px 24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;}
+.welcome-logo{font-size:26px;font-weight:800;color:var(--green);font-family:var(--ff-display);letter-spacing:-.5px;margin-bottom:2px;}
+.welcome-sub{font-size:9px;color:var(--ink-40);margin-bottom:4px;letter-spacing:.5px;text-transform:uppercase;}
+.welcome-tagline{font-size:11px;color:var(--ink-60);margin-bottom:20px;line-height:1.5;}
+.welcome-q{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;}
+.welcome-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.welcome-card{border:2px solid var(--ink-12);border-radius:14px;padding:16px 10px;cursor:pointer;transition:all .2s;background:var(--white);}
+.welcome-card:hover{border-color:var(--green);background:#F0F7EE;transform:translateY(-2px);}
+.welcome-card.ph-card-sel:hover{border-color:#1B5E82;background:#E3F2FD;}
+.welcome-card.selected.dr-sel{border-color:var(--green);background:#E6F4EC;}
+.welcome-card.selected.ph-sel{border-color:#1B5E82;background:#E3F2FD;}
+.welcome-card-icon{font-size:30px;margin-bottom:8px;}
+.welcome-card-title{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px;line-height:1.3;}
+.welcome-card-desc{font-size:9px;color:var(--ink-40);line-height:1.4;}
+.welcome-btn{width:100%;margin-top:14px;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
+.welcome-btn:hover{background:#3a7a33;}
+.welcome-btn:disabled{background:#bbb;cursor:not-allowed;}
+.welcome-switch{font-size:10px;color:var(--ink-40);margin-top:10px;cursor:pointer;text-decoration:underline;}
+.welcome-switch:hover{color:var(--green);}
+.user-type-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:600;padding:3px 8px;border-radius:10px;cursor:pointer;margin-left:8px;}
+.user-type-badge.doctor{background:#E6F4EC;color:#1E6B3A;}
+.user-type-badge.pharmacy{background:#E3F2FD;color:#1B5E82;}
+
+/* ═══════════════════════════════════
+   PHARMACY CATALOGUE CARD
+═══════════════════════════════════ */
+.ph-card-footer{margin-top:8px;border-top:1px solid var(--ink-06);padding-top:7px;}
+.ph-slab-title{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#1B5E82;margin-bottom:5px;}
+.ph-slab-row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;}
+.ph-slab-qty{font-size:9px;color:var(--ink);font-weight:500;}
+.ph-slab-rate{font-size:9px;color:#1B5E82;font-weight:700;}
+.ph-moq{font-size:9px;color:var(--ink-40);margin-bottom:5px;}
+.ph-moq span{font-weight:600;color:var(--ink);}
+.ph-enquire-btn{width:100%;margin-top:8px;padding:9px;background:#1B5E82;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s;}
+.ph-enquire-btn:hover{background:#1565C0;}
+
 .sh-stock-badge {
   display: inline-block;
   font-size: 9px;
@@ -1232,6 +1273,32 @@ body {
 </head>
 <body>
 
+<!-- ═══════ WELCOME POPUP ═══════ -->
+<div class="welcome-overlay" id="welcomeOverlay">
+  <div class="welcome-box">
+    <div class="welcome-logo">🌿 Chand Aushdhalaya</div>
+    <div class="welcome-sub">Est. 1929 · GMP · AYUSH Licensed</div>
+    <div class="welcome-tagline">Classical Ayurvedic Manufacturer<br>Exclusively for B2B buyers</div>
+    <div class="welcome-q">Who are you?</div>
+    <div class="welcome-cards">
+      <div class="welcome-card dr-sel" id="wc-doctor" onclick="selectUserType('doctor')">
+        <div class="welcome-card-icon">👨‍⚕️</div>
+        <div class="welcome-card-title">Doctor / Clinic / Hospital</div>
+        <div class="welcome-card-desc">Ayurvedic practitioners, physicians & healthcare providers</div>
+      </div>
+      <div class="welcome-card ph-card-sel" id="wc-pharmacy" onclick="selectUserType('pharmacy')">
+        <div class="welcome-card-icon">🏪</div>
+        <div class="welcome-card-title">Pharmacy / Marketing Co.</div>
+        <div class="welcome-card-desc">Medical stores, distributors & marketing companies</div>
+      </div>
+    </div>
+    <button class="welcome-btn" id="welcomeBtn" onclick="confirmUserType()" disabled>
+      Continue →
+    </button>
+    <div class="welcome-switch" onclick="skipWelcome()">Browse catalogue without selecting</div>
+  </div>
+</div>
+
 <!-- ═══════ ENQUIRE RATE MODAL ═══════ -->
 <div class="dr-overlay" id="drOverlay" onclick="if(event.target===this)closeDrModal()">
   <div class="dr-box">
@@ -1289,6 +1356,7 @@ body {
   <div class="sync-bar">
     <span class="sync-dot loading" id="syncDot"></span>
     <span id="syncText">Connecting to price sheet…</span>
+    <span class="user-type-badge doctor" id="userTypeBadge" onclick="openWelcome()" style="display:none;">👨‍⚕️ Doctor</span>
     <button id="admin-login-btn" style="margin-left:auto;background:rgba(197,160,89,.15);border:.5px solid rgba(197,160,89,.5);border-radius:6px;padding:4px 10px;font-family:inherit;font-size:10px;font-weight:500;color:#C5A059;cursor:pointer;letter-spacing:.3px;">⚙️ Admin</button>
   </div>
 </header>
@@ -2529,13 +2597,20 @@ function render(){
     const ucs=extractUC(p.rog,p.ind,p.sr);
     const chipHtml=ucs.map(k=>{const t=ucStyle(k);return `<span class="chip" style="background:${t.bg};color:${t.tx}"><span class="chip-en">${t.en}</span>${t.hi?`<span class="chip-hi">${t.hi}</span>`:''}</span>`;}).join('');
     const pd=getProdData(p.sr,p.cat,p.n);
+    const en=p.n.replace(/'/g,"\\'"), ec=p.cat.replace(/'/g,"\\'");
+
+    /* ── PHARMACY CATALOGUE ── */
+    if(_userType === 'pharmacy'){
+      return buildPharmacyCard(p, pd, en, ec);
+    }
+
+    /* ── DOCTOR CATALOGUE (default) ── */
     /* Discounted rate display */
     const drNum = pd.discRate ? Number(pd.discRate) : (pd.mrp ? Math.round(Number(pd.mrp)*(1-(Number(pd.discPct)||35)/100)) : 0);
     const drHtml = drNum > 0
       ? '<span>\u20B9'+drNum.toLocaleString('en-IN').charAt(0)+'</span><span class="offer-blurred">'+drNum.toLocaleString('en-IN').slice(1)+'</span>'
       : '<span class="offer-blurred" style="font-size:14px;">\u20B9\u2022\u2022\u2022</span>';
     const msg=encodeURIComponent(`Hello Chand Aushdhalaya, I am interested in bulk enquiry for: ${p.n} (${p.cat}). Please share pricing, MOQ and availability.`);
-    const en=p.n.replace(/'/g,"\\'"), ec=p.cat.replace(/'/g,"\\'");
     const moqBtn=`<button class="btn-moq" onclick="openSheet('${p.sr}','${en}','${p.hi}','${ec}',event)">📦 MOQ</button>`;
     const enqBtn=`<button class="btn-enq" onclick="window.open('https://wa.me/919999591429?text=${msg}','_blank')">📲 Enquire</button>`;
 
@@ -3172,12 +3247,149 @@ function drGetRateWA(){
 }
 
 /* ═══════════════════════════════════
+   USER TYPE & WELCOME POPUP
+═══════════════════════════════════ */
+let _userType = null; /* 'doctor' | 'pharmacy' | null */
+let _selectedType = null;
+
+function initUserType(){
+  const stored = localStorage.getItem('chand_user_type');
+  const expires = localStorage.getItem('chand_user_type_exp');
+  if(stored && expires && Date.now() < Number(expires)){
+    _userType = stored;
+    updateUserBadge();
+    return;
+  }
+  /* Show welcome popup after short delay */
+  setTimeout(openWelcome, 600);
+}
+
+function openWelcome(){
+  _selectedType = _userType;
+  document.getElementById('welcomeOverlay').classList.add('open');
+  /* Restore selection state */
+  document.getElementById('wc-doctor').classList.toggle('selected', _selectedType==='doctor');
+  document.getElementById('wc-doctor').classList.toggle('dr-sel', _selectedType==='doctor');
+  document.getElementById('wc-pharmacy').classList.toggle('selected', _selectedType==='pharmacy');
+  document.getElementById('wc-pharmacy').classList.toggle('ph-sel', _selectedType==='pharmacy');
+  document.getElementById('welcomeBtn').disabled = !_selectedType;
+}
+
+function selectUserType(type){
+  _selectedType = type;
+  const docCard = document.getElementById('wc-doctor');
+  const phCard  = document.getElementById('wc-pharmacy');
+  docCard.classList.toggle('selected', type==='doctor');
+  docCard.classList.toggle('dr-sel',   type==='doctor');
+  phCard.classList.toggle('selected',  type==='pharmacy');
+  phCard.classList.toggle('ph-sel',    type==='pharmacy');
+  document.getElementById('welcomeBtn').disabled = false;
+  document.getElementById('welcomeBtn').textContent =
+    type === 'doctor' ? '👨‍⚕️ View Doctor Catalogue →' : '🏪 View Pharmacy Catalogue →';
+}
+
+function confirmUserType(){
+  if(!_selectedType) return;
+  _userType = _selectedType;
+  /* Save for 30 days */
+  const exp = Date.now() + 30*24*60*60*1000;
+  localStorage.setItem('chand_user_type', _userType);
+  localStorage.setItem('chand_user_type_exp', String(exp));
+  document.getElementById('welcomeOverlay').classList.remove('open');
+  updateUserBadge();
+  render();
+}
+
+function skipWelcome(){
+  _userType = 'doctor'; /* default to doctor view */
+  document.getElementById('welcomeOverlay').classList.remove('open');
+  updateUserBadge();
+  render();
+}
+
+function updateUserBadge(){
+  const badge = document.getElementById('userTypeBadge');
+  if(!badge) return;
+  if(_userType === 'doctor'){
+    badge.className = 'user-type-badge doctor';
+    badge.textContent = '👨‍⚕️ Doctor · Switch';
+    badge.style.display = 'inline-flex';
+  } else if(_userType === 'pharmacy'){
+    badge.className = 'user-type-badge pharmacy';
+    badge.textContent = '🏪 Pharmacy · Switch';
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function buildPharmacyCard(p, pd, en, ec){
+  const cc = getCatConf(p.cat);
+  const isBs = BEST_SELLERS.includes(p.n);
+  const stockBadge = pd.stock==='Out of Stock'
+    ? '<div class="stock-badge out">OUT OF STOCK</div>'
+    : isBs ? '<div class="stock-badge in bestseller-badge">⭐ BEST SELLER</div>' : '';
+
+  const catIcon = CAT_ICONS[p.cat]
+    ? `<div class="card-img-icon">${CAT_ICONS[p.cat]}</div>`
+    : `<div class="card-emoji">${cc.e}</div>`;
+
+  const imgHtml = pd.imageUrl
+    ? `<img src="${pd.imageUrl}" alt="${en}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r-img);" onerror="this.style.display='none'">`
+    : catIcon;
+
+  return `<div class="card" data-sr="${p.sr}" data-cat="${ec}" style="position:relative;cursor:pointer;" onclick="openSheet('${p.sr}','${en}','${p.hi||''}','${ec}',event)">
+    <div class="card-band" style="background:${cc.bg}"></div>
+    <div class="card-img" style="background:${cc.bg}20">
+      ${stockBadge}
+      ${imgHtml}
+    </div>
+    <div class="card-body">
+      <div class="card-cat" style="background:${cc.bg};color:${cc.c};">
+        <span class="card-cat-icon">${CAT_ICONS[p.cat]||cc.e}</span>
+        ${p.cat.toUpperCase()}
+      </div>
+      <div class="card-name">${p.n}</div>
+      ${p.hi ? `<div class="card-name-hi">${p.hi}</div>` : ''}
+      ${p.rog ? `<div class="rog-preview">${p.rog.length>80?p.rog.slice(0,77)+'…':p.rog}</div>` : ''}
+      <div class="ph-card-footer">
+        <div class="ph-moq">Min. Order: <span>${pd.qty}</span></div>
+        <div class="ph-slab-title">📦 Slab Pricing</div>
+        <div class="ph-slab-row">
+          <span class="ph-slab-qty">1 – 5 Kg</span>
+          <span class="ph-slab-rate">On Request</span>
+        </div>
+        <div class="ph-slab-row">
+          <span class="ph-slab-qty">6 – 10 Kg</span>
+          <span class="ph-slab-rate">On Request</span>
+        </div>
+        <div class="ph-slab-row">
+          <span class="ph-slab-qty">11 Kg +</span>
+          <span class="ph-slab-rate">On Request</span>
+        </div>
+        <button class="ph-enquire-btn" onclick="event.stopPropagation();phEnquire('${en}','${ec}')">
+          📲 Get Rates on WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function phEnquire(name, cat){
+  const msg = encodeURIComponent(
+    `Hello Chand Aushdhalaya,\n\nI would like to enquire about bulk pricing for:\n*${name}*\n\nPlease share slab-wise rates and MOQ details.\n\n– Sent from B2B Catalogue`
+  );
+  window.open(`https://wa.me/919999591429?text=${msg}`, '_blank');
+}
+
+/* ═══════════════════════════════════
    INIT
 ═══════════════════════════════════ */
 buildPills();
 fetchSheet();
 render();
 setInterval(fetchSheet, 5*60*1000);
+initUserType();
 </script>
 
 <!-- ═══════════ ADMIN PANEL ═══════════ -->
