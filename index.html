@@ -2329,8 +2329,9 @@ const P=[
 let activeCat = 'All';
 let activeAud = 'all';
 let viewMode  = 'g';
-let sheetData = {};
-let sheetOk   = false;
+let sheetData    = {};
+let sheetOk      = false;
+let _pricingData = {}; /* sr → {mrp, discPct, discRate} — loaded from Firebase */
 
 /* ═══════════════════════════════════
    GOOGLE SHEET FETCH
@@ -3389,7 +3390,9 @@ buildPills();
 fetchSheet();
 render();
 setInterval(fetchSheet, 5*60*1000);
-initUserType();
+/* Show welcome popup after page loads */
+window.addEventListener('DOMContentLoaded', ()=>{ setTimeout(initUserType, 800); });
+if(document.readyState !== 'loading') setTimeout(initUserType, 800);
 </script>
 
 <!-- ═══════════ ADMIN PANEL ═══════════ -->
@@ -3743,7 +3746,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
 /* ═══════════════════════════════════
    PRICING TAB
 ═══════════════════════════════════ */
-let _pricingData = {}; /* sr → {mrp, discPct} */
 let _pricingLoaded = false;
 
 async function loadPricingFromFirebase(){
