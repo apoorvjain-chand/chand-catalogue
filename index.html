@@ -1184,25 +1184,29 @@ body {
   color: var(--green);
   font-weight: 700;
 }
-.ph-trust-overlay { display: none; }
-.ph-trust-row {
+.ph-trust-overlay {
+  position: absolute;
+  top: 6px;
+  right: 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: 3px;
+  z-index: 5;
 }
 .ph-trust-chip {
-  font-size: 9px;
-  font-weight: 500;
+  font-size: 6.5px;
+  font-weight: 600;
   color: #2D5A27;
-  background: #E6F4EC;
+  background: rgba(255,255,255,.93);
   border: 1px solid #A8D5B5;
-  border-radius: 8px;
-  padding: 4px 10px;
+  border-radius: 5px;
+  padding: 2px 5px;
   display: flex;
   align-items: center;
-  gap: 5px;
-  width: 100%;
+  gap: 2px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  backdrop-filter: blur(2px);
 }
 .ph-forms-row {
   display: flex;
@@ -3447,9 +3451,15 @@ function buildPharmacyCard(p, pd, en, ec){
 
   return `<div class="card ph-b2b-card" data-sr="${p.sr}" data-cat="${ec}" style="position:relative;">
     <div class="card-band"></div>
-    <div class="card-img" style="background:${cc.bg}20;position:relative;">
+    <div class="card-img" style="background:${cc.bg}20;position:relative;overflow:visible;">
       ${topBadge}
       ${imgHtml}
+      <div class="ph-trust-overlay">
+        <span class="ph-trust-chip">⚡ Fast Dispatch</span>
+        <span class="ph-trust-chip">✅ GMP Certified</span>
+        <span class="ph-trust-chip">🏅 ISO Accredited</span>
+        <span class="ph-trust-chip">🌿 AYUSH Licensed</span>
+      </div>
     </div>
     <div class="card-body">
       <div class="card-cat" style="background:${cc.bg};color:${cc.c};">
@@ -3474,12 +3484,6 @@ function buildPharmacyCard(p, pd, en, ec){
           <div class="ph-slab-range">${slab2}</div>
           <div class="ph-slab-val">On Request</div>
         </div>
-      </div>
-      <div class="ph-trust-row">
-        <span class="ph-trust-chip">⚡ Fast Dispatch</span>
-        <span class="ph-trust-chip">✅ GMP Certified</span>
-        <span class="ph-trust-chip">🏅 ISO Accredited</span>
-        <span class="ph-trust-chip">🌿 AYUSH Licensed</span>
       </div>
       <button class="ph-enquire-btn" onclick="phEnquire('${en}','${ec}')">
         📲 Get Bulk Rate on WhatsApp
