@@ -139,8 +139,9 @@ body {
   font-size: 10px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: rgba(255,255,255,.35);
+  color: #C5A059;
   margin-top: 6px;
+  font-weight: 600;
 }
 
 .trust-chips {
@@ -1259,30 +1260,25 @@ body {
   white-space: nowrap;
 }
 .ph-moq-box {
-  background: linear-gradient(135deg, #C5A059, #D4AF6A);
-  border: none;
+  background: #FFFBF0;
+  border: 1.5px solid #C5A059;
   border-radius: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   margin-bottom: 8px;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
   text-align: center;
 }
 .ph-moq-val {
   font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -.1px;
-  text-shadow: 0 1px 2px rgba(0,0,0,.15);
-  text-align: center;
+  font-weight: 600;
+  color: #7A5000;
+  letter-spacing: 0;
+  text-align: left;
 }
 .ph-moq-label {
-  font-size: 9px;
-  color: rgba(255,255,255,.85);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .5px;
+  display: none;
 }
 .ph-enquire-btn {
   width: 100%;
@@ -2608,11 +2604,12 @@ function getProdData(sr,cat,name){
   /* Base data from sheet or defaults */
   let base;
   if(sheetRow){
+    const def = CAT_MOQ[cat]||{};
     base = {
       qty:      sheetRow[COL.MOQ_QTY]||'—',
       pack:     sheetRow[COL.MOQ_UNIT]||'—',
       format:   sheetRow[COL.CAT]||cat,
-      packSizes:sheetRow[COL.PACK_SIZES]||'—',
+      packSizes:(!sheetRow[COL.PACK_SIZES] || sheetRow[COL.PACK_SIZES]==='—') ? (def.packSizes||'—') : sheetRow[COL.PACK_SIZES],
       notes:    sheetRow[COL.NOTES]||'',
       rate:     sheetRow[COL.RATE]||null,
       rateUnit: sheetRow[COL.RATE_UNIT]||'',
@@ -3543,7 +3540,20 @@ function buildMarketingCard(p, pd, en, ec){
     ? `<div class="ph-forms-row"><span class="ph-forms-label">Available in:</span><span class="ph-forms-val">${forms}</span></div>`
     : '';
 
-  const packSizes = pd.packSizes && pd.packSizes !== 'As required' ? pd.packSizes : null;
+  /* Always use defined pack sizes for marketing — ignore sheet value */
+  const mktPackMap = {
+    'Churna':         '50gm · 100gm · 200gm',
+    'Kadha':          '50gm · 100gm · 200gm',
+    'Guggul':         '30 Tabs · 60 Tabs · 120 Tabs · 1000 Tabs',
+    'Vati':           '30 Tabs · 60 Tabs · 120 Tabs · 1000 Tabs',
+    'Bhasma':         '5gm · 10gm · 25gm · 100gm · 500gm · 1kg',
+    'Pishti-Parpati': '5gm · 10gm · 25gm · 100gm · 500gm · 1kg',
+    'Loha':           '5gm · 10gm · 25gm · 100gm · 500gm · 1kg',
+    'Ras-Rasayan':    '20 Tabs · 40 Tabs · 500 Tabs',
+    'Tail':           '10ml · 20ml · 50ml · 100ml · 200ml',
+    'Miscellaneous':  p.n === 'Shilajit Resin' ? '10gm · 20gm · 50gm' : '30 Tabs · 60 Tabs · 120 Tabs · 1000 Tabs',
+  };
+  const packSizes = mktPackMap[p.cat] || null;
   const packSizesHtml = packSizes
     ? `<div class="mkt-pack-sizes">
         <span class="mkt-pack-label">📦 Pack Sizes</span>
@@ -3575,7 +3585,7 @@ function buildMarketingCard(p, pd, en, ec){
       ${formsHtml}
       ${packSizesHtml}
       <div class="ph-moq-box">
-        <span class="ph-moq-val">📦 Third Party Manufacturing · MOQ starts at 50 Units</span>
+        <span class="ph-moq-val">✳️ Third Party Manufacturing · MOQ starts at 50 Units</span>
       </div>
       <button class="ph-enquire-btn" onclick="mktEnquire('${en}','${ec}')">
         📲 Get Third Party Quote on WhatsApp
