@@ -1190,23 +1190,26 @@ body {
   right: 6px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   z-index: 5;
 }
 .ph-trust-chip {
-  font-size: 6.5px;
-  font-weight: 600;
-  color: #2D5A27;
   background: rgba(255,255,255,.93);
   border: 1px solid #A8D5B5;
-  border-radius: 5px;
+  border-radius: 4px;
   padding: 2px 5px;
   display: flex;
   align-items: center;
-  gap: 2px;
-  white-space: nowrap;
+  gap: 3px;
+  font-size: 9px;
   box-shadow: 0 1px 3px rgba(0,0,0,.08);
-  backdrop-filter: blur(2px);
+  white-space: nowrap;
+}
+.ph-tc-txt {
+  font-size: 6.5px;
+  font-weight: 700;
+  color: #2D5A27;
+  line-height: 1;
 }
 .ph-forms-row {
   display: flex;
@@ -3455,10 +3458,10 @@ function buildPharmacyCard(p, pd, en, ec){
       ${topBadge}
       ${imgHtml}
       <div class="ph-trust-overlay">
-        <span class="ph-trust-chip">⚡ Fast Dispatch</span>
-        <span class="ph-trust-chip">✅ GMP Certified</span>
-        <span class="ph-trust-chip">🏅 ISO Accredited</span>
-        <span class="ph-trust-chip">🌿 AYUSH Licensed</span>
+        <span class="ph-trust-chip">⚡<span class="ph-tc-txt">Fast Dispatch</span></span>
+        <span class="ph-trust-chip">✅<span class="ph-tc-txt">GMP Certified</span></span>
+        <span class="ph-trust-chip">🏅<span class="ph-tc-txt">ISO Accredited</span></span>
+        <span class="ph-trust-chip">🌿<span class="ph-tc-txt">AYUSH Licensed</span></span>
       </div>
     </div>
     <div class="card-body">
