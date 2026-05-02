@@ -957,6 +957,19 @@ body {
   .cat-hero-inner { padding: 10px 12px; }
   .cat-hero-en { font-size: 10px; }
   .cat-hero-hi { font-size: 10px; }
+
+  /* Admin panel mobile fixes */
+  .admin-panel { padding: 0 8px 20px; }
+  .admin-hdr { padding: 10px 12px; gap: 6px; }
+  .admin-hdr-title { font-size: 14px; }
+  .metrics { grid-template-columns: repeat(2,1fr); gap: 6px; }
+  .mc { padding: 10px 10px; }
+  .mc-val { font-size: 20px; }
+  .sec { margin-bottom: 10px; border-radius: 8px; }
+  .sec-hdr { padding: 10px 12px; flex-wrap: wrap; gap: 4px; }
+  .sec-title { font-size: 11px; }
+  .prod-table th, .prod-table td { font-size: 9px; padding: 5px 6px; }
+  #wa-filter-cat, #wa-filter-date { font-size: 10px; padding: 5px 6px; min-width: 0; flex: 1; }
 }
 
 @media (max-width: 360px) {
@@ -4178,8 +4191,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
 .empty-txt{font-size:12px;}
 
 /* Tabs */
-.tabs{display:flex;gap:0;border-bottom:1px solid var(--ink-12);margin-bottom:14px;}
-.tab{padding:9px 14px;font-size:11px;font-weight:500;cursor:pointer;color:var(--ink-60);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .18s;}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--ink-12);margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:9px 12px;font-size:10px;font-weight:500;cursor:pointer;color:var(--ink-60);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .18s;white-space:nowrap;flex-shrink:0;}
 .tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:600;}
 .tab-panel{display:none;} .tab-panel.active{display:block;}
 
@@ -4361,23 +4375,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
         <input id="wa-filter-search" placeholder="Search product..." oninput="renderWAEnquiries()"
           style="font-family:inherit;font-size:10px;padding:4px 10px;border:1px solid var(--ink-12);border-radius:6px;flex:1;min-width:120px;">
       </div>
-      <div class="sec-body" style="padding:0;overflow-x:auto;">
-        <table class="prod-table" style="width:100%;">
-          <thead class="pt-head">
-            <tr>
-              <th>#</th>
-              <th>Date & Time</th>
-              <th>Name</th>
-              <th>WhatsApp No.</th>
-              <th>Catalogue</th>
-              <th>Category</th>
-              <th>Product</th>
-              <th>Also Viewed</th>
-              <th>Campaign</th>
-            </tr>
-          </thead>
-          <tbody id="wa-enq-tbody"></tbody>
-        </table>
+      <div class="sec-body" style="padding:0;">
+        <div id="wa-enq-tbody"></div>
       </div>
     </div>
   </div>
@@ -4645,28 +4644,30 @@ function renderWAEnquiries(){
     const time = e.timestamp
       ? new Date(e.timestamp).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
       : '—';
-    const cat = e.catalogue||'unknown';
     const alsoViewed = Array.isArray(e.alsoViewed) && e.alsoViewed.length
-      ? e.alsoViewed.map(p=>`<span style="font-size:8px;background:#F0F7EE;border:1px solid #A8D5B5;border-radius:4px;padding:1px 5px;margin:1px;display:inline-block;">${p}</span>`).join('')
-      : '<span style="color:var(--ink-40);font-size:9px;">—</span>';
+      ? e.alsoViewed.map(p=>`<span style="font-size:8px;background:#F0F7EE;border:1px solid #A8D5B5;border-radius:4px;padding:1px 5px;margin:1px 1px 2px;display:inline-block;">${p}</span>`).join('')
+      : null;
+    const cat = e.catalogue||'unknown';
 
-    return `<tr class="pt-row">
-      <td style="font-size:10px;color:var(--ink-40);">${i+1}</td>
-      <td style="font-size:10px;color:var(--ink-60);">${time}</td>
-      <td style="font-size:10px;">${e.userName||'—'}</td>
-      <td style="font-size:11px;font-weight:600;color:var(--green);">${e.phone||'—'}</td>
-      <td>
-        <span style="font-size:9px;font-weight:600;padding:2px 8px;border-radius:8px;
-          background:${catBg[cat]||'#F5F5F5'};color:${catColor[cat]||'#888'};">
-          ${catIcon[cat]||'—'} ${cat}
-        </span>
-      </td>
-      <td style="font-size:10px;color:var(--ink-60);">${e.category||'—'}</td>
-      <td style="font-size:11px;font-weight:500;">${e.product||'—'}</td>
-      <td style="max-width:160px;">${alsoViewed}</td>
-      <td style="font-size:9px;color:#1B5E82;">${e.ref||'direct'}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-40);padding:20px;font-size:11px;">No WhatsApp enquiries yet</td></tr>';
+    return `<div style="padding:10px 14px;border-bottom:1px solid var(--ink-06);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink);">${e.userName||'—'}</div>
+          <div style="font-size:11px;font-weight:600;color:var(--green);margin-top:1px;">${e.phone||'—'}</div>
+        </div>
+        <div style="text-align:right;">
+          <span style="font-size:9px;font-weight:600;padding:2px 8px;border-radius:8px;background:${catBg[cat]||'#F5F5F5'};color:${catColor[cat]||'#888'};">${catIcon[cat]||''} ${cat}</span>
+          <div style="font-size:9px;color:var(--ink-40);margin-top:3px;">${time}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${alsoViewed?'6px':'0'};">
+        <span style="font-size:9px;background:var(--cream);border:1px solid var(--ink-12);border-radius:5px;padding:2px 7px;"><strong>Cat:</strong> ${e.category||'—'}</span>
+        <span style="font-size:9px;background:var(--cream);border:1px solid var(--ink-12);border-radius:5px;padding:2px 7px;font-weight:600;">${e.product||'—'}</span>
+        ${e.ref && e.ref!=='direct' ? `<span style="font-size:9px;background:#E3F2FD;border:1px solid #BBDEFB;border-radius:5px;padding:2px 7px;color:#1B5E82;">📲 ${e.ref}</span>` : ''}
+      </div>
+      ${alsoViewed ? `<div style="margin-top:4px;"><span style="font-size:8px;color:var(--ink-40);font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Also viewed: </span>${alsoViewed}</div>` : ''}
+    </div>`;
+  }).join('') || '<div style="text-align:center;color:var(--ink-40);padding:24px;font-size:11px;">No WhatsApp enquiries yet</div>';
 }
 
 function exportWAEnquiries(){
