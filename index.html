@@ -1437,7 +1437,41 @@ body {
 </head>
 <body>
 
-<!-- ═══════ WELCOME POPUP ═══════ -->
+<!-- ═══════ LEAD CAPTURE POPUP ═══════ -->
+<div class="welcome-overlay" id="leadCaptureOverlay">
+  <div class="welcome-box" style="max-width:340px;">
+    <div style="font-size:20px;margin-bottom:6px;">📲</div>
+    <div class="welcome-logo" style="font-size:18px;" id="lc-title">Get Bulk Rate</div>
+    <div class="welcome-tagline" id="lc-product" style="font-size:11px;color:var(--green);font-weight:600;margin-bottom:16px;"></div>
+
+    <div style="text-align:left;margin-bottom:10px;">
+      <label style="font-size:10px;font-weight:600;color:var(--ink-60);display:block;margin-bottom:4px;">Your Name <span style="color:#aaa;">(optional)</span></label>
+      <input id="lc-name" type="text" placeholder="e.g. Dr. Sharma / Ravi Medical Store"
+        style="width:100%;padding:9px 12px;border:1px solid var(--ink-12);border-radius:8px;font-family:inherit;font-size:12px;outline:none;"
+        onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--ink-12)'">
+    </div>
+
+    <div style="text-align:left;margin-bottom:16px;">
+      <label style="font-size:10px;font-weight:600;color:var(--ink-60);display:block;margin-bottom:4px;">WhatsApp Number <span style="color:#B00020;">*</span></label>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:12px;font-weight:600;color:var(--ink-60);padding:9px 10px;background:#f5f5f5;border:1px solid var(--ink-12);border-radius:8px;">+91</span>
+        <input id="lc-phone" type="tel" maxlength="10" placeholder="10-digit number"
+          style="flex:1;padding:9px 12px;border:1px solid var(--ink-12);border-radius:8px;font-family:inherit;font-size:12px;outline:none;"
+          onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--ink-12)'"
+          oninput="validateLCPhone()">
+      </div>
+      <div id="lc-phone-hint" style="font-size:9px;color:#aaa;margin-top:4px;">Enter 10-digit mobile number to continue</div>
+    </div>
+
+    <button id="lc-submit-btn" onclick="submitLeadCapture()" disabled
+      style="width:100%;padding:12px;background:#ccc;color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;cursor:not-allowed;transition:all .2s;">
+      Continue to WhatsApp →
+    </button>
+    <div style="font-size:9px;color:var(--ink-40);margin-top:10px;">
+      Your details are kept private and used only for follow-ups.
+    </div>
+  </div>
+</div>
 <div class="welcome-overlay" id="welcomeOverlay">
   <div class="welcome-box">
     <div class="welcome-logo">🌿 Chand Aushdhalaya</div>
@@ -3239,9 +3273,7 @@ function aWA(sr, name, cat){
   aSave(d);
   fsIncProduct(sr, name, cat, 'waClicks');
   fsIncDaily('wa');
-  /* Search → enquiry funnel */
   trackEnquiryFromSearch(sr, name, cat);
-  /* Campaign conversion tracking */
   const ref = getCampaignRef();
   if(ref !== 'direct'){
     fsWrite('campaigns', sanitize(ref), {
@@ -3249,13 +3281,28 @@ function aWA(sr, name, cat){
       lastConversion: new Date().toISOString(),
     });
   }
-  /* Intent + userType on conversion */
   fsWrite('products', sr, {
     name, cat,
     [`wa_${_userType||'unknown'}`]: fsInc(1),
     lastEnquiry: new Date().toISOString(),
   });
+  fsLogWAEnquiry(sr, name, cat);
+}
 
+async function fsLogWAEnquiry(sr, name, cat){
+  if(!window._fsReady || !window._fsDb) return;
+  try{
+    const {collection, addDoc} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await addDoc(collection(window._fsDb, 'wa_enquiries'), {
+      sr,
+      product:   name,
+      category:  cat,
+      catalogue: _userType || 'unknown',
+      timestamp: new Date().toISOString(),
+      date:      new Date().toISOString().slice(0,10),
+      ref:       getCampaignRef(),
+    });
+  }catch(e){ console.error('fsLogWAEnquiry:', e.message); }
 }
 
 /* ── Track search ── */
@@ -3598,6 +3645,76 @@ function drGetRateWA(){
 }
 
 /* ═══════════════════════════════════
+   LEAD CAPTURE POPUP
+═══════════════════════════════════ */
+let _lcPending = null; /* {type, name, cat, sr, msgUrl} */
+
+function openLeadCapture(type, name, cat, sr, msgUrl){
+  _lcPending = {type, name, cat, sr, msgUrl};
+  document.getElementById('lc-title').textContent =
+    type === 'marketing' ? 'Get Third Party Quote' : 'Get Bulk Rate';
+  document.getElementById('lc-product').textContent = name;
+  document.getElementById('lc-name').value  = '';
+  document.getElementById('lc-phone').value = '';
+  document.getElementById('lc-phone-hint').textContent = 'Enter 10-digit mobile number to continue';
+  document.getElementById('lc-phone-hint').style.color = '#aaa';
+  const btn = document.getElementById('lc-submit-btn');
+  btn.disabled = true;
+  btn.style.background = '#ccc';
+  btn.style.cursor = 'not-allowed';
+  document.getElementById('leadCaptureOverlay').classList.add('open');
+}
+
+function validateLCPhone(){
+  const val = document.getElementById('lc-phone').value.replace(/\D/g,'');
+  const btn = document.getElementById('lc-submit-btn');
+  const hint = document.getElementById('lc-phone-hint');
+  if(val.length === 10){
+    btn.disabled = false;
+    btn.style.background = 'var(--green)';
+    btn.style.cursor = 'pointer';
+    hint.textContent = '✅ Looks good!';
+    hint.style.color = '#1E6B3A';
+  } else {
+    btn.disabled = true;
+    btn.style.background = '#ccc';
+    btn.style.cursor = 'not-allowed';
+    hint.textContent = val.length > 0 ? `${val.length}/10 digits entered` : 'Enter 10-digit mobile number to continue';
+    hint.style.color = val.length > 0 ? '#C5A059' : '#aaa';
+  }
+}
+
+async function submitLeadCapture(){
+  if(!_lcPending) return;
+  const phone = document.getElementById('lc-phone').value.replace(/\D/g,'');
+  const name  = document.getElementById('lc-name').value.trim();
+  if(phone.length !== 10) return;
+
+  /* Save lead to Firebase */
+  if(window._fsReady && window._fsDb){
+    try{
+      const {collection, addDoc} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      await addDoc(collection(window._fsDb, 'wa_enquiries'), {
+        phone:     '+91'+phone,
+        userName:  name||'',
+        product:   _lcPending.name,
+        category:  _lcPending.cat,
+        sr:        _lcPending.sr||'—',
+        catalogue: _lcPending.type,
+        timestamp: new Date().toISOString(),
+        date:      new Date().toISOString().slice(0,10),
+        ref:       getCampaignRef(),
+      });
+    }catch(e){ console.error('Lead capture save error:', e.message); }
+  }
+
+  /* Close popup and open WhatsApp */
+  document.getElementById('leadCaptureOverlay').classList.remove('open');
+  window.open(_lcPending.msgUrl, '_blank');
+  _lcPending = null;
+}
+
+/* ═══════════════════════════════════
    USER TYPE & WELCOME POPUP
 ═══════════════════════════════════ */
 let _userType = null; /* 'doctor' | 'pharmacy' | null */
@@ -3838,7 +3955,7 @@ function mktEnquire(name, cat){
   const msg = encodeURIComponent(
     `Hello Chand Aushdhalaya,\n\nI am interested in Third Party Manufacturing / Marketing services for:\n*${name}*\n\nPlease share MOQ, pricing and manufacturing details.\n\n– Sent from B2B Catalogue`
   );
-  window.open(`https://wa.me/919999591429?text=${msg}`, '_blank');
+  openLeadCapture('marketing', name, cat, '—', `https://wa.me/919999591429?text=${msg}`);
 }
 
 function buildPharmacyCard(p, pd, en, ec){
@@ -3937,7 +4054,7 @@ function phEnquire(name, cat){
   const msg = encodeURIComponent(
     `Hello Chand Aushdhalaya,\n\nI would like to enquire about bulk pricing for:\n*${name}*\n\nPlease share slab-wise rates and MOQ details.\n\n– Sent from B2B Catalogue`
   );
-  window.open(`https://wa.me/919999591429?text=${msg}`, '_blank');
+  openLeadCapture('pharmacy', name, cat, '—', `https://wa.me/919999591429?text=${msg}`);
 }
 
 /* ═══════════════════════════════════
@@ -4100,6 +4217,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     <div class="tab" onclick="switchTab('categories',this)">Categories</div>
     <div class="tab" onclick="switchTab('searches',this)">Searches</div>
     <div class="tab" onclick="switchTab('users',this)">👤 Users</div>
+    <div class="tab" onclick="switchTab('waenquiries',this)">📲 WA Enquiries</div>
     <div class="tab" onclick="switchTab('audience',this)">📊 Audience</div>
     <div class="tab" onclick="switchTab('behaviour',this)">🧠 Behaviour</div>
     <div class="tab" onclick="switchTab('drleads',this)">🩺 Doctor Leads</div>
@@ -4252,6 +4370,51 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
           <div class="empty-icon">🩺</div>
           <div class="empty-txt">No doctor leads yet. Leads appear when doctors verify on WhatsApp.</div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WA ENQUIRIES TAB -->
+  <div class="tab-panel" id="tab-waenquiries">
+    <div class="sec">
+      <div class="sec-hdr">
+        <span class="sec-title">📲 WhatsApp Enquiries</span>
+        <span class="sec-badge" id="wa-enq-count">0 enquiries</span>
+        <button onclick="exportWAEnquiries()" style="margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;">⬇ Export CSV</button>
+      </div>
+      <!-- Filters -->
+      <div style="padding:8px 16px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--ink-06);">
+        <select id="wa-filter-cat" onchange="renderWAEnquiries()" style="font-family:inherit;font-size:10px;padding:4px 8px;border:1px solid var(--ink-12);border-radius:6px;">
+          <option value="">All Catalogues</option>
+          <option value="doctor">👨‍⚕️ Doctor</option>
+          <option value="pharmacy">🏪 Pharmacy</option>
+          <option value="marketing">📦 Marketing</option>
+        </select>
+        <select id="wa-filter-date" onchange="renderWAEnquiries()" style="font-family:inherit;font-size:10px;padding:4px 8px;border:1px solid var(--ink-12);border-radius:6px;">
+          <option value="">All Dates</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+        </select>
+        <input id="wa-filter-search" placeholder="Search product..." oninput="renderWAEnquiries()"
+          style="font-family:inherit;font-size:10px;padding:4px 10px;border:1px solid var(--ink-12);border-radius:6px;flex:1;min-width:120px;">
+      </div>
+      <div class="sec-body" style="padding:0;overflow-x:auto;">
+        <table class="prod-table" style="width:100%;">
+          <thead class="pt-head">
+            <tr>
+              <th>#</th>
+              <th>Date & Time</th>
+              <th>Name</th>
+              <th>WhatsApp No.</th>
+              <th>Catalogue</th>
+              <th>Category</th>
+              <th>Product</th>
+              <th>Campaign</th>
+            </tr>
+          </thead>
+          <tbody id="wa-enq-tbody"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -4469,6 +4632,94 @@ function populateMktPricingCards(){
     if(priceEl) priceEl.textContent = data.priceFrom ? '₹'+data.priceFrom+'/unit' : '—';
     if(moqEl)   moqEl.textContent   = data.moqFrom   ? data.moqFrom+' Units'      : '—';
   });
+}
+
+/* ═══════════════════════════════════
+   WA ENQUIRIES TAB
+═══════════════════════════════════ */
+let _waEnquiries = [];
+
+async function loadWAEnquiries(){
+  if(!window._fsReady||!window._fsDb) return;
+  try{
+    const {collection, getDocs, orderBy, query} =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(query(
+      collection(window._fsDb,'wa_enquiries'),
+      orderBy('timestamp','desc')
+    ));
+    _waEnquiries = [];
+    snap.forEach(d=>_waEnquiries.push({id:d.id,...d.data()}));
+    renderWAEnquiries();
+  }catch(e){ console.error('loadWAEnquiries:', e.message); }
+}
+
+function renderWAEnquiries(){
+  const catFilter  = document.getElementById('wa-filter-cat')?.value||'';
+  const dateFilter = document.getElementById('wa-filter-date')?.value||'';
+  const search     = (document.getElementById('wa-filter-search')?.value||'').toLowerCase();
+  const today      = new Date().toISOString().slice(0,10);
+  const weekAgo    = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+  const monthAgo   = new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+
+  const filtered = _waEnquiries.filter(e=>{
+    if(catFilter  && e.catalogue !== catFilter) return false;
+    if(dateFilter === 'today' && e.date !== today) return false;
+    if(dateFilter === 'week'  && e.date < weekAgo) return false;
+    if(dateFilter === 'month' && e.date < monthAgo) return false;
+    if(search && !e.product?.toLowerCase().includes(search) &&
+       !e.category?.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('wa-enq-count').textContent = filtered.length + ' enquiries';
+
+  const catIcon = {doctor:'👨‍⚕️', pharmacy:'🏪', marketing:'📦'};
+  const catColor = {doctor:'#1E6B3A', pharmacy:'#1B5E82', marketing:'#7A5000'};
+  const catBg    = {doctor:'#E6F4EC', pharmacy:'#E3F2FD', marketing:'#FFF9C4'};
+
+  document.getElementById('wa-enq-tbody').innerHTML = filtered.map((e,i)=>{
+    const time = e.timestamp
+      ? new Date(e.timestamp).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+      : '—';
+    const cat = e.catalogue||'unknown';
+    return `<tr class="pt-row">
+      <td style="font-size:10px;color:var(--ink-40);">${i+1}</td>
+      <td style="font-size:10px;color:var(--ink-60);">${time}</td>
+      <td style="font-size:10px;">${e.userName||'—'}</td>
+      <td style="font-size:11px;font-weight:600;color:var(--green);">${e.phone||'—'}</td>
+      <td>
+        <span style="font-size:9px;font-weight:600;padding:2px 8px;border-radius:8px;
+          background:${catBg[cat]||'#F5F5F5'};color:${catColor[cat]||'#888'};">
+          ${catIcon[cat]||'—'} ${cat}
+        </span>
+      </td>
+      <td style="font-size:10px;color:var(--ink-60);">${e.category||'—'}</td>
+      <td style="font-size:11px;font-weight:500;">${e.product||'—'}</td>
+      <td style="font-size:9px;color:#1B5E82;">${e.ref||'direct'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-40);padding:20px;font-size:11px;">No WhatsApp enquiries yet</td></tr>';
+}
+
+function exportWAEnquiries(){
+  const catFilter  = document.getElementById('wa-filter-cat')?.value||'';
+  const search     = (document.getElementById('wa-filter-search')?.value||'').toLowerCase();
+  const rows = _waEnquiries.filter(e=>{
+    if(catFilter && e.catalogue !== catFilter) return false;
+    if(search && !e.product?.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  let csv = 'Date,Time,Name,WhatsApp Number,Catalogue,Category,Product,Campaign\n';
+  rows.forEach(e=>{
+    const dt = e.timestamp ? new Date(e.timestamp) : null;
+    const date = dt ? dt.toLocaleDateString('en-IN') : '';
+    const time = dt ? dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '';
+    csv += `"${date}","${time}","${e.userName||''}","${e.phone||''}","${e.catalogue||''}","${e.category||''}","${e.product||''}","${e.ref||'direct'}"\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = 'WA_Enquiries_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
 }
 
 /* ═══════════════════════════════════
@@ -5196,7 +5447,8 @@ function switchTab(name, el){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('tab-'+name).classList.add('active');
-  if(name === 'audience')  loadAudienceData();
+  if(name === 'waenquiries') loadWAEnquiries();
+  if(name === 'audience')   loadAudienceData();
   if(name === 'behaviour') loadBehaviourData();
   if(name === 'pricing'){
     if(!_pricingLoaded){
