@@ -3697,15 +3697,19 @@ async function submitLeadCapture(){
     try{
       const {collection, addDoc} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
       await addDoc(collection(window._fsDb, 'wa_enquiries'), {
-        phone:     '+91'+phone,
-        userName:  name||'',
-        product:   _lcPending.name,
-        category:  _lcPending.cat,
-        sr:        _lcPending.sr||'—',
-        catalogue: _lcPending.type,
-        timestamp: new Date().toISOString(),
-        date:      new Date().toISOString().slice(0,10),
-        ref:       getCampaignRef(),
+        phone:      '+91'+phone,
+        userName:   name||'',
+        product:    _lcPending.name,
+        category:   _lcPending.cat,
+        sr:         _lcPending.sr||'—',
+        catalogue:  _lcPending.type,
+        timestamp:  new Date().toISOString(),
+        date:       new Date().toISOString().slice(0,10),
+        ref:        getCampaignRef(),
+        alsoViewed: _sessionBrowsed
+          .filter(p=>p.name !== _lcPending.name)
+          .slice(0,5)
+          .map(p=>p.name),
       });
     }catch(e){ console.error('Lead capture save error:', e.message); }
   }
@@ -4222,7 +4226,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     <div class="tab" onclick="switchTab('waenquiries',this)">📲 WA Enquiries</div>
     <div class="tab" onclick="switchTab('audience',this)">📊 Audience</div>
     <div class="tab" onclick="switchTab('behaviour',this)">🧠 Behaviour</div>
-    <div class="tab" onclick="switchTab('drleads',this)">🩺 Doctor Leads</div>
     <div class="tab" onclick="switchTab('pricing',this)">💰 Pricing</div>
   </div>
 
@@ -4333,49 +4336,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
     </div>
   </div>
 
-  <!-- DOCTOR LEADS TAB -->
-  <div class="tab-panel" id="tab-drleads">
-    <div class="sec">
-      <div class="sec-hdr">
-        <span class="sec-title">🩺 Doctor Leads</span>
-        <span class="sec-badge" id="dr-count">0 leads</span>
-        <button onclick="exportDrLeads()" style="margin-left:auto;background:var(--maroon);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;">⬇ Export Excel</button>
-      </div>
-      <!-- Filter tabs -->
-      <div style="display:flex;gap:6px;padding:10px 16px 0;flex-wrap:wrap;">
-        <button class="dr-filter-btn active" onclick="filterDrLeads('all',this)">All</button>
-        <button class="dr-filter-btn" onclick="filterDrLeads('whatsapp_opened',this)">📲 Verified</button>
-        <button class="dr-filter-btn" onclick="filterDrLeads('enquiry_placed',this)">✅ Enquired</button>
-        <button class="dr-filter-btn" onclick="filterDrLeads('dropped_off',this)">⚠️ Drop-offs</button>
-      </div>
-      <div class="sec-body" style="padding:0;overflow-x:auto;">
-        <table class="prod-table" id="dr-table">
-          <thead class="pt-head">
-            <tr>
-              <th>Name</th>
-              <th>Mobile</th>
-              <th>City</th>
-              <th>Pincode</th>
-              <th>Speciality</th>
-              <th>Product</th>
-              <th>MRP</th>
-              <th>Dr. Price</th>
-              <th>Also Browsed</th>
-              <th>Status</th>
-              <th>Time</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="dr-tbody"></tbody>
-        </table>
-        <div class="empty hidden" id="dr-empty">
-          <div class="empty-icon">🩺</div>
-          <div class="empty-txt">No doctor leads yet. Leads appear when doctors verify on WhatsApp.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- WA ENQUIRIES TAB -->
   <div class="tab-panel" id="tab-waenquiries">
     <div class="sec">
@@ -4412,6 +4372,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
               <th>Catalogue</th>
               <th>Category</th>
               <th>Product</th>
+              <th>Also Viewed</th>
               <th>Campaign</th>
             </tr>
           </thead>
@@ -4685,6 +4646,10 @@ function renderWAEnquiries(){
       ? new Date(e.timestamp).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
       : '—';
     const cat = e.catalogue||'unknown';
+    const alsoViewed = Array.isArray(e.alsoViewed) && e.alsoViewed.length
+      ? e.alsoViewed.map(p=>`<span style="font-size:8px;background:#F0F7EE;border:1px solid #A8D5B5;border-radius:4px;padding:1px 5px;margin:1px;display:inline-block;">${p}</span>`).join('')
+      : '<span style="color:var(--ink-40);font-size:9px;">—</span>';
+
     return `<tr class="pt-row">
       <td style="font-size:10px;color:var(--ink-40);">${i+1}</td>
       <td style="font-size:10px;color:var(--ink-60);">${time}</td>
@@ -4698,6 +4663,7 @@ function renderWAEnquiries(){
       </td>
       <td style="font-size:10px;color:var(--ink-60);">${e.category||'—'}</td>
       <td style="font-size:11px;font-weight:500;">${e.product||'—'}</td>
+      <td style="max-width:160px;">${alsoViewed}</td>
       <td style="font-size:9px;color:#1B5E82;">${e.ref||'direct'}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-40);padding:20px;font-size:11px;">No WhatsApp enquiries yet</td></tr>';
@@ -4711,12 +4677,13 @@ function exportWAEnquiries(){
     if(search && !e.product?.toLowerCase().includes(search)) return false;
     return true;
   });
-  let csv = 'Date,Time,Name,WhatsApp Number,Catalogue,Category,Product,Campaign\n';
+  let csv = 'Date,Time,Name,WhatsApp Number,Catalogue,Category,Product,Also Viewed,Campaign\n';
   rows.forEach(e=>{
     const dt = e.timestamp ? new Date(e.timestamp) : null;
     const date = dt ? dt.toLocaleDateString('en-IN') : '';
     const time = dt ? dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '';
-    csv += `"${date}","${time}","${e.userName||''}","${e.phone||''}","${e.catalogue||''}","${e.category||''}","${e.product||''}","${e.ref||'direct'}"\n`;
+    const also = Array.isArray(e.alsoViewed) ? e.alsoViewed.join(' | ') : '';
+    csv += `"${date}","${time}","${e.userName||''}","${e.phone||''}","${e.catalogue||''}","${e.category||''}","${e.product||''}","${also}","${e.ref||'direct'}"\n`;
   });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
