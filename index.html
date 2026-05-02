@@ -1259,6 +1259,40 @@ body {
   padding: 2px 6px;
   white-space: nowrap;
 }
+.mkt-info-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.mkt-info-btn {
+  background: #FFFBF0;
+  border: 1.5px solid #C5A059;
+  border-radius: 8px;
+  padding: 7px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mkt-info-icon { font-size: 16px; flex-shrink: 0; }
+.mkt-info-label {
+  font-size: 7px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  color: var(--ink-40);
+}
+.mkt-info-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7A5000;
+  line-height: 1.2;
+}
+.mkt-info-sub {
+  font-size: 7px;
+  color: var(--ink-40);
+  margin-top: 1px;
+}
 .ph-moq-box {
   background: #FFFBF0;
   border: 1.5px solid #C5A059;
@@ -2758,7 +2792,6 @@ function render(){
     if(_userType === 'marketing'){
       return buildMarketingCard(p, pd, en, ec);
     }
-
     /* ── DOCTOR CATALOGUE (default) ── */
     /* Discounted rate display */
     const drNum = pd.discRate ? Number(pd.discRate) : (pd.mrp ? Math.round(Number(pd.mrp)*(1-(Number(pd.discPct)||35)/100)) : 0);
@@ -2837,11 +2870,9 @@ function render(){
       </div>
     </div>`;
   }).join('');
+  /* Populate marketing pricing after render */
+  if(_userType === 'marketing' && _mktPricingLoaded) populateMktPricingCards();
 }
-
-/* ═══════════════════════════════════
-   OPEN MOQ SHEET
-═══════════════════════════════════ */
 function openSheet(sr,name,nameHi,cat,event){
   if(event) event.stopPropagation();
   _currentSheetProduct = {sr, name, cat};
@@ -3431,6 +3462,7 @@ render = function(){
 window.addEventListener('firebase-ready', ()=>{
   loadHeatScores();
   loadPricingFromFirebase().then(()=>{ if(sheetOk) render(); });
+  loadMktPricingFromFirebase();
 }, {once:true});
 
 /* ── ADMIN PANEL OPENER — global scope ── */
@@ -3777,8 +3809,23 @@ function buildMarketingCard(p, pd, en, ec){
       <div style="border-top:1px solid var(--ink-06);margin:8px 0 7px;"></div>
       ${formsHtml}
       ${packSizesHtml}
-      <div class="ph-moq-box">
-        <span class="ph-moq-val">✳️ Third Party Manufacturing · MOQ starts at 50 Units</span>
+      <div class="mkt-info-row">
+        <div class="mkt-info-btn">
+          <span class="mkt-info-icon">💰</span>
+          <div>
+            <div class="mkt-info-label">Price as low as</div>
+            <div class="mkt-info-val" id="mkt-price-${p.sr}">—</div>
+            <div class="mkt-info-sub">on bulk orders</div>
+          </div>
+        </div>
+        <div class="mkt-info-btn">
+          <span class="mkt-info-icon">📦</span>
+          <div>
+            <div class="mkt-info-label">MOQ starts at</div>
+            <div class="mkt-info-val" id="mkt-moq-${p.sr}">—</div>
+            <div class="mkt-info-sub">minimum order</div>
+          </div>
+        </div>
       </div>
       <button class="ph-enquire-btn" onclick="mktEnquire('${en}','${ec}')">
         📲 Get Third Party Quote on WhatsApp
@@ -4364,12 +4411,66 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(
         </table>
       </div>
     </div>
+
+    <!-- Marketing Pricing Section -->
+    <div class="sec" style="margin-top:12px;">
+      <div class="sec-hdr">
+        <span class="sec-title">📦 Marketing Pricing</span>
+        <span class="sec-badge">Price From · MOQ From</span>
+        <button onclick="saveAllMktPricing()" style="margin-left:auto;background:#C5A059;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;">💾 Save Marketing Prices</button>
+      </div>
+      <div style="padding:8px 16px;font-size:10px;color:var(--ink-60);background:#FFFBF0;border-bottom:1px solid #F0D090;">
+        Set Price From (₹/unit) and MOQ From (units) for Marketing catalogue. Shown on product cards.
+      </div>
+      <div style="padding:8px 16px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--ink-06);">
+        <input id="mkt-pricing-search" placeholder="Search product..." oninput="renderMktPricingTable()"
+          style="font-family:inherit;font-size:10px;padding:4px 10px;border:1px solid var(--ink-12);border-radius:6px;flex:1;min-width:120px;">
+      </div>
+      <div class="sec-body" style="padding:0;overflow-x:auto;">
+        <table class="prod-table" id="mkt-pricing-table">
+          <thead class="pt-head">
+            <tr>
+              <th>SR</th>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Price as low as (₹/unit)</th>
+              <th>MOQ From (Units)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="mkt-pricing-tbody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
 </div>
 
 </div>
 <script>
+let _mktPricing = {}; /* sr → {priceFrom, moqFrom} */
+let _mktPricingLoaded = false;
+
+async function loadMktPricingFromFirebase(){
+  if(!window._fsReady || !window._fsDb) return;
+  try{
+    const {collection, getDocs} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(collection(window._fsDb, 'mkt_pricing'));
+    snap.forEach(doc=>{ _mktPricing[doc.id] = doc.data(); });
+    _mktPricingLoaded = true;
+    populateMktPricingCards();
+  }catch(e){ console.error('loadMktPricing error:', e.message); }
+}
+
+function populateMktPricingCards(){
+  Object.entries(_mktPricing).forEach(([sr, data])=>{
+    const priceEl = document.getElementById('mkt-price-'+sr);
+    const moqEl   = document.getElementById('mkt-moq-'+sr);
+    if(priceEl) priceEl.textContent = data.priceFrom ? '₹'+data.priceFrom+'/unit' : '—';
+    if(moqEl)   moqEl.textContent   = data.moqFrom   ? data.moqFrom+' Units'      : '—';
+  });
+}
+
 /* ═══════════════════════════════════
    BEHAVIOUR TAB
 ═══════════════════════════════════ */
@@ -4522,8 +4623,77 @@ async function loadAudienceData(){
   }catch(e){ console.error('loadAudienceData error:', e.message); }
 }
 
+function renderMktPricingTable(){
+  const search = (document.getElementById('mkt-pricing-search')?.value||'').toLowerCase();
+  /* Skip Asav-Arishta and non-Gandhak/Shilajit misc */
+  const filtered = P.filter(p=>{
+    if(p.cat === 'Asav-Arishta') return false;
+    if(p.cat === 'Miscellaneous' && p.n !== 'Gandhak Rasayan' && p.n !== 'Shilajit Resin') return false;
+    if(search && !p.n.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('mkt-pricing-tbody').innerHTML = filtered.map(p=>{
+    const pd = _mktPricing[p.sr]||{};
+    const saved = pd.priceFrom ? '✅ Saved' : '⬜ Not set';
+    return `<tr class="pt-row">
+      <td style="font-size:10px;color:var(--ink-40);">${p.sr}</td>
+      <td><div style="font-size:11px;">${p.n}</div><div style="font-size:9px;color:var(--ink-40);">${p.hi||''}</div></td>
+      <td style="font-size:10px;color:var(--ink-60);">${p.cat}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="font-size:10px;color:var(--ink-60);">₹</span>
+          <input type="number" id="mktprice-${p.sr}" value="${pd.priceFrom||''}" placeholder="e.g. 45"
+            style="width:70px;padding:4px 6px;border:1px solid var(--ink-12);border-radius:5px;font-family:inherit;font-size:11px;">
+          <span style="font-size:9px;color:var(--ink-40);">/unit</span>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <input type="number" id="mktmoq-${p.sr}" value="${pd.moqFrom||''}" placeholder="e.g. 50"
+            style="width:70px;padding:4px 6px;border:1px solid var(--ink-12);border-radius:5px;font-family:inherit;font-size:11px;">
+          <span style="font-size:9px;color:var(--ink-40);">units</span>
+        </div>
+      </td>
+      <td style="font-size:10px;color:${pd.priceFrom?'#1E6B3A':'#888'};">${saved}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function saveAllMktPricing(){
+  if(!window._fsReady||!window._fsDb){ alert('Firebase not connected.'); return; }
+  const btn = event.target;
+  btn.textContent = '⏳ Saving...'; btn.disabled = true;
+  try{
+    const {collection, doc, setDoc} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const rows = document.querySelectorAll('#mkt-pricing-tbody tr');
+    let saved = 0;
+    for(const row of rows){
+      const sr    = row.querySelector('[id^="mktprice-"]')?.id.replace('mktprice-','');
+      const price = document.getElementById('mktprice-'+sr)?.value.trim();
+      const moq   = document.getElementById('mktmoq-'+sr)?.value.trim();
+      if(!sr) continue;
+      const data = {
+        priceFrom: price||'',
+        moqFrom:   moq||'',
+        updatedAt: new Date().toISOString(),
+      };
+      await setDoc(doc(collection(window._fsDb,'mkt_pricing'), sr), data, {merge:true});
+      _mktPricing[sr] = data;
+      saved++;
+    }
+    btn.textContent = `✅ Saved ${saved} products`;
+    setTimeout(()=>{ btn.textContent='💾 Save Marketing Prices'; btn.disabled=false; }, 3000);
+    renderMktPricingTable();
+    populateMktPricingCards();
+  }catch(e){
+    btn.textContent='❌ Error'; btn.disabled=false;
+    console.error(e.message);
+  }
+}
+
 /* ═══════════════════════════════════
-   PRICING TAB
+   PRICING TAB (Doctor)
 ═══════════════════════════════════ */
 let _pricingLoaded = false;
 
@@ -5033,6 +5203,11 @@ function switchTab(name, el){
       loadPricingFromFirebase().then(()=>renderPricingTable());
     } else {
       renderPricingTable();
+    }
+    if(!_mktPricingLoaded){
+      loadMktPricingFromFirebase().then(()=>renderMktPricingTable());
+    } else {
+      renderMktPricingTable();
     }
   }
 }
