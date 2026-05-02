@@ -1445,10 +1445,11 @@ body {
     <div class="welcome-tagline" id="lc-product" style="font-size:11px;color:var(--green);font-weight:600;margin-bottom:16px;"></div>
 
     <div style="text-align:left;margin-bottom:10px;">
-      <label style="font-size:10px;font-weight:600;color:var(--ink-60);display:block;margin-bottom:4px;">Your Name <span style="color:#aaa;">(optional)</span></label>
+      <label style="font-size:10px;font-weight:600;color:var(--ink-60);display:block;margin-bottom:4px;">Your Name <span style="color:#B00020;">*</span></label>
       <input id="lc-name" type="text" placeholder="e.g. Dr. Sharma / Ravi Medical Store"
         style="width:100%;padding:9px 12px;border:1px solid var(--ink-12);border-radius:8px;font-family:inherit;font-size:12px;outline:none;"
-        onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--ink-12)'">
+        onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--ink-12)'"
+        oninput="validateLCPhone()">
     </div>
 
     <div style="text-align:left;margin-bottom:16px;">
@@ -3637,11 +3638,11 @@ function shareDrProduct(){
 }
 
 function drGetRateWA(){
-  const {name, cat} = _currentSheetProduct || {};
+  const {sr, name, cat} = _currentSheetProduct || {};
   const msg = encodeURIComponent(
     `Hello Chand Aushdhalaya,\n\nI would like to enquire about the rate for:\n*${name||''}*\n\nPlease share the B2B rate and MOQ details.`
   );
-  window.open(`https://wa.me/916306777697?text=${msg}`, '_blank');
+  openLeadCapture('doctor', name||'', cat||'', sr||'—', `https://wa.me/916306777697?text=${msg}`);
 }
 
 /* ═══════════════════════════════════
@@ -3666,21 +3667,22 @@ function openLeadCapture(type, name, cat, sr, msgUrl){
 }
 
 function validateLCPhone(){
-  const val = document.getElementById('lc-phone').value.replace(/\D/g,'');
-  const btn = document.getElementById('lc-submit-btn');
-  const hint = document.getElementById('lc-phone-hint');
-  if(val.length === 10){
-    btn.disabled = false;
-    btn.style.background = 'var(--green)';
-    btn.style.cursor = 'pointer';
-    hint.textContent = '✅ Looks good!';
-    hint.style.color = '#1E6B3A';
+  const phone = document.getElementById('lc-phone').value.replace(/\D/g,'');
+  const name  = document.getElementById('lc-name').value.trim();
+  const btn   = document.getElementById('lc-submit-btn');
+  const hint  = document.getElementById('lc-phone-hint');
+  const valid = phone.length === 10 && name.length > 0;
+  btn.disabled       = !valid;
+  btn.style.background = valid ? 'var(--green)' : '#ccc';
+  btn.style.cursor     = valid ? 'pointer' : 'not-allowed';
+  if(phone.length === 10 && name.length > 0){
+    hint.textContent = '✅ Ready to continue'; hint.style.color = '#1E6B3A';
+  } else if(phone.length === 10 && !name){
+    hint.textContent = 'Please enter your name to continue'; hint.style.color = '#C5A059';
+  } else if(phone.length > 0){
+    hint.textContent = `${phone.length}/10 digits entered`; hint.style.color = '#C5A059';
   } else {
-    btn.disabled = true;
-    btn.style.background = '#ccc';
-    btn.style.cursor = 'not-allowed';
-    hint.textContent = val.length > 0 ? `${val.length}/10 digits entered` : 'Enter 10-digit mobile number to continue';
-    hint.style.color = val.length > 0 ? '#C5A059' : '#aaa';
+    hint.textContent = 'Enter 10-digit mobile number to continue'; hint.style.color = '#aaa';
   }
 }
 
